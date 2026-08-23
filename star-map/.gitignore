@@ -3,3 +3,4 @@ node_modules/
 .npm-cache/
 .env
 data/*.json
+build.log
