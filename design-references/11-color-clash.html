@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>风格 11 · 潮流撞色 | 星图视觉参考</title>
+<style>
+  :root{
+    --cream:#f5f0e4;
+    --ink:#191919;
+    --purple:#6c4cf1;
+    --yellow:#ffd23f;
+    --teal:#2ec4b6;
+    --coral:#ff5d3b;
+    --pink:#ff9ecf;
+    --bw:2.5px;
+    --hard:5px 5px 0 var(--ink);
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{
+    font-family:"PingFang SC","Microsoft YaHei",-apple-system,sans-serif;
+    background:var(--cream);color:var(--ink);min-height:100vh;overflow-x:hidden;
+  }
+  .wrap{max-width:460px;margin:0 auto;padding:26px 20px 128px;position:relative}
+
+  /* 孟菲斯装饰 */
+  .deco{position:absolute;pointer-events:none;font-weight:900}
+  .dc1{top:16px;right:70px;color:var(--coral);font-size:18px;transform:rotate(15deg)}
+  .dc2{top:46px;right:26px;color:var(--teal);font-size:13px}
+  .dc3{top:240px;left:-6px;color:var(--purple);font-size:16px;transform:rotate(-12deg)}
+
+  .topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:26px}
+  .logo{display:flex;align-items:center;gap:10px}
+  .logo .mark{
+    width:42px;height:42px;background:var(--purple);border:var(--bw) solid var(--ink);
+    border-radius:12px;box-shadow:4px 4px 0 var(--ink);
+    display:flex;align-items:center;justify-content:center;
+  }
+  .logo .mark svg{width:22px;height:22px}
+  .logo .name{font-size:22px;font-weight:900;letter-spacing:4px}
+  .logo .name i{font-style:normal;color:var(--purple)}
+  .ava{
+    width:44px;height:44px;background:var(--yellow);border:var(--bw) solid var(--ink);border-radius:50%;
+    display:flex;align-items:center;justify-content:center;font-weight:900;font-size:15px;
+    box-shadow:3px 3px 0 var(--ink);
+  }
+
+  /* 主视觉：大色块 */
+  .hero{
+    background:var(--purple);border:var(--bw) solid var(--ink);border-radius:22px;
+    box-shadow:var(--hard);padding:28px 24px 24px;position:relative;margin-bottom:26px;
+    overflow:hidden;color:#fff;
+  }
+  .hero .big-star{position:absolute;right:-18px;top:-18px;transform:rotate(12deg)}
+  .hero .ring{
+    position:absolute;right:60px;bottom:24px;width:44px;height:44px;border-radius:50%;
+    border:5px solid var(--teal);
+  }
+  .hero .dots{position:absolute;left:24px;bottom:22px;display:flex;gap:7px}
+  .hero .dots i{width:9px;height:9px;border-radius:50%;background:var(--yellow)}
+  .hero .dots i:nth-child(2){background:var(--coral)}
+  .hero .dots i:nth-child(3){background:var(--teal)}
+  .hero .date{
+    display:inline-block;background:var(--ink);color:var(--yellow);font-size:10.5px;font-weight:800;
+    letter-spacing:2px;padding:6px 12px;border-radius:8px;margin-bottom:16px;
+  }
+  .hero h1{font-size:26px;font-weight:900;line-height:1.6;letter-spacing:1px}
+  .hero h1 .hl{background:var(--yellow);color:var(--ink);padding:0 8px;border-radius:6px;white-space:nowrap}
+  .hero p{margin-top:12px;font-size:12px;line-height:1.9;opacity:.92;max-width:15em}
+
+  /* 双入口：撞色贴纸卡 */
+  .duo{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:28px}
+  .sticker{
+    border:var(--bw) solid var(--ink);border-radius:20px;padding:18px 16px;cursor:pointer;
+    box-shadow:var(--hard);transition:.15s;position:relative;
+  }
+  .sticker:hover{transform:translate(2px,2px);box-shadow:3px 3px 0 var(--ink)}
+  .st1{background:#fff}
+  .st2{background:var(--yellow)}
+  .sticker .icn{
+    width:56px;height:56px;border:var(--bw) solid var(--ink);border-radius:16px;
+    display:flex;align-items:center;justify-content:center;margin-bottom:14px;
+  }
+  .st1 .icn{background:var(--teal)}
+  .st2 .icn{background:var(--coral)}
+  .sticker .icn svg{width:30px;height:30px}
+  .sticker h3{font-size:16.5px;font-weight:900;letter-spacing:1px}
+  .sticker p{font-size:10.5px;margin-top:6px;line-height:1.7;color:#444}
+  .sticker .go{
+    position:absolute;top:14px;right:14px;width:26px;height:26px;border:2.5px solid var(--ink);
+    border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;
+    font-size:12px;font-weight:900;
+  }
+  .st2 .go{background:var(--pink)}
+
+  .sec{display:flex;align-items:center;gap:12px;margin:0 2px 16px}
+  .sec .sq{width:16px;height:16px;background:var(--coral);border:2.5px solid var(--ink);border-radius:5px;transform:rotate(8deg)}
+  .sec h2{font-size:16px;font-weight:900;letter-spacing:2px}
+  .sec .line{flex:1;border-top:2.5px dashed #c9c2ae}
+  .sec span{font-size:10px;font-weight:700;color:#9a937e;letter-spacing:1px}
+
+  /* 心情色：调色盘卡 */
+  .mood{
+    background:#fff;border:var(--bw) solid var(--ink);border-radius:20px;box-shadow:var(--hard);
+    padding:20px;margin-bottom:28px;display:flex;gap:18px;align-items:center;
+  }
+  .palette{
+    width:76px;height:76px;border:var(--bw) solid var(--ink);border-radius:50%;flex:none;
+    background:conic-gradient(var(--yellow) 0 25%, var(--coral) 0 50%, var(--pink) 0 72%, var(--purple) 0 100%);
+    position:relative;transform:rotate(-8deg);
+  }
+  .palette::after{
+    content:"";position:absolute;width:20px;height:20px;background:#fff;border:var(--bw) solid var(--ink);
+    border-radius:50%;top:8px;right:14px;
+  }
+  .mood .tag{
+    display:inline-block;font-size:9.5px;font-weight:900;letter-spacing:2px;background:var(--teal);
+    border:2px solid var(--ink);border-radius:6px;padding:4px 9px;margin-bottom:9px;
+  }
+  .mood h3{font-size:16.5px;font-weight:900;margin-bottom:6px}
+  .mood p{font-size:11.5px;line-height:1.8;color:#555}
+
+  /* 星图：贴纸册 */
+  .atlas{
+    background:var(--teal);border:var(--bw) solid var(--ink);border-radius:20px;
+    box-shadow:var(--hard);padding:18px 12px 14px;margin-bottom:28px;
+  }
+  .atlas .inner{background:#fdfcf7;border:2.5px solid var(--ink);border-radius:14px;padding:8px 4px}
+  .atlas svg{width:100%;display:block}
+  .chips{display:flex;gap:8px;justify-content:center;margin-top:12px;flex-wrap:wrap}
+  .chip{
+    font-size:10px;font-weight:800;background:#fff;border:2px solid var(--ink);border-radius:8px;
+    padding:5px 10px;box-shadow:2.5px 2.5px 0 var(--ink);
+  }
+  .chip.on{background:var(--ink);color:var(--yellow)}
+
+  /* 报告 */
+  .report{
+    background:#fff;border:var(--bw) solid var(--ink);border-radius:20px;box-shadow:var(--hard);
+    padding:22px;margin-bottom:16px;position:relative;
+  }
+  .report .clip{
+    position:absolute;top:-14px;left:24px;background:var(--coral);border:2.5px solid var(--ink);
+    border-radius:8px;font-size:10px;font-weight:900;letter-spacing:2px;padding:5px 12px;color:#fff;
+    transform:rotate(-2deg);
+  }
+  .report blockquote{
+    font-size:14.5px;font-weight:800;line-height:2;margin-top:6px;
+    padding-left:14px;border-left:5px solid var(--yellow);
+  }
+  .report .src{font-size:10.5px;color:#9a937e;margin-top:8px;text-align:right}
+  .report .body{font-size:12.5px;color:#444;line-height:2;margin-top:12px}
+  .actions{display:flex;gap:12px;margin-top:18px}
+  .btn{
+    flex:1;text-align:center;font-size:12px;font-weight:900;letter-spacing:2px;padding:13px 0;
+    border:var(--bw) solid var(--ink);border-radius:14px;cursor:pointer;box-shadow:4px 4px 0 var(--ink);
+    transition:.12s;
+  }
+  .btn:active{transform:translate(2px,2px);box-shadow:2px 2px 0 var(--ink)}
+  .btn-primary{background:var(--ink);color:var(--yellow)}
+  .btn-ghost{background:#fff}
+
+  .tabbar{
+    position:fixed;left:50%;transform:translateX(-50%);bottom:14px;z-index:10;
+    width:min(430px,calc(100% - 32px));
+    display:flex;justify-content:space-around;align-items:center;
+    background:#fff;border:var(--bw) solid var(--ink);border-radius:20px;
+    box-shadow:var(--hard);padding:10px 8px;
+  }
+  .tab{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:9.5px;font-weight:800;color:#9a937e}
+  .tab i{font-style:normal;font-size:18px}
+  .tab.on{
+    color:var(--ink);background:var(--yellow);border:2px solid var(--ink);border-radius:12px;
+    padding:5px 12px;flex-direction:row;gap:6px;box-shadow:2.5px 2.5px 0 var(--ink);
+  }
+
+  .spec{margin-top:36px;font-size:11px;color:#7a7462;line-height:2;border-top:2.5px dashed #c9c2ae;padding-top:16px}
+  .spec b{color:var(--ink)}
+  .swatches{display:flex;gap:8px;margin-top:8px}
+  .sw{width:26px;height:26px;border:2px solid var(--ink);border-radius:8px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <span class="deco dc1">✚</span><span class="deco dc2">●</span><span class="deco dc3">★</span>
+
+  <header class="topbar">
+    <div class="logo">
+      <div class="mark">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2 L14.5 9 L22 9.5 L16 14 L18 21 L12 17 L6 21 L8 14 L2 9.5 L9.5 9 Z"/>
+        </svg>
+      </div>
+      <div class="name">星<i>图</i></div>
+    </div>
+    <div class="ava">澄</div>
+  </header>
+
+  <!-- 大色块主视觉 -->
+  <section class="hero">
+    <svg class="big-star" width="120" height="120" viewBox="0 0 120 120">
+      <path d="M60 8 L72 44 L110 46 L80 68 L90 106 L60 84 L30 106 L40 68 L10 46 L48 44 Z"
+        fill="#ffd23f" stroke="#191919" stroke-width="4" stroke-linejoin="round"/>
+      <circle cx="52" cy="54" r="4" fill="#191919"/><circle cx="70" cy="54" r="4" fill="#191919"/>
+      <path d="M52 66 Q60 72 68 66" fill="none" stroke="#191919" stroke-width="3.5" stroke-linecap="round"/>
+    </svg>
+    <div class="ring"></div>
+    <div class="dots"><i></i><i></i><i></i></div>
+    <span class="date">10.24 · 记录第 18 天</span>
+    <h1>晚上好，阿澄。<br>星河低垂，<br><span class="hl">宜与自己对坐</span>。</h1>
+    <p>星图上有 23 颗星。「工作的意义」最近亮了不少，想去看看也可以，不去也可以。</p>
+  </section>
+
+  <!-- 撞色入口 -->
+  <section class="duo">
+    <div class="sticker st1">
+      <span class="go">→</span>
+      <div class="icn">
+        <svg viewBox="0 0 30 30" fill="none" stroke="#191919" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M6 24 L7.5 18 L19 6.5 A2.8 2.8 0 0 1 23 10.5 L11.5 22 Z"/>
+          <path d="M17 9 L21 13"/><path d="M5 26 L20 26"/>
+        </svg>
+      </div>
+      <h3>记录星图</h3>
+      <p>把今天理清楚<br>聊几句或直接填</p>
+    </div>
+    <div class="sticker st2">
+      <span class="go">→</span>
+      <div class="icn">
+        <svg viewBox="0 0 30 30" fill="none" stroke="#191919" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M15 4 C21 4 26 8.5 26 14.5 C26 20.5 21 25 15 25 C13 25 11.2 24.5 9.6 23.7 L4 25 L5.6 20 C4.4 18.4 4 16.5 4 14.5 C4 8.5 9 4 15 4 Z"/>
+          <circle cx="11" cy="14.5" r="1.6" fill="#191919"/><circle cx="19" cy="14.5" r="1.6" fill="#191919"/>
+          <path d="M11.5 18 Q15 20.5 18.5 18"/>
+        </svg>
+      </div>
+      <h3>和小星聊聊</h3>
+      <p>你的陪伴星灵<br>测验 · 树洞 · 碎碎念</p>
+    </div>
+  </section>
+
+  <!-- 心情色 -->
+  <div class="sec"><span class="sq"></span><h2>今日心情色</h2><div class="line"></div><span>MOOD</span></div>
+  <section class="mood">
+    <div class="palette"></div>
+    <div>
+      <span class="tag">琥珀玫瑰</span>
+      <h3>疲惫里的一点温</h3>
+      <p>说了三次「累」。聊到猫的时候，颜色亮了一些。</p>
+    </div>
+  </section>
+
+  <!-- 星图贴纸册 -->
+  <div class="sec"><span class="sq" style="background:var(--purple)"></span><h2>内心星图</h2><div class="line"></div><span>7 DAYS</span></div>
+  <section class="atlas">
+    <div class="inner">
+      <svg viewBox="0 0 360 185">
+        <!-- 粗描边连线 -->
+        <g stroke="#191919" stroke-width="2.5" stroke-linecap="round">
+          <line x1="88" y1="56" x2="150" y2="94"/><line x1="150" y1="94" x2="232" y2="64"/>
+          <line x1="232" y1="64" x2="282" y2="112"/><line x1="150" y1="94" x2="118" y2="140"/>
+          <line x1="118" y1="140" x2="200" y2="132"/><line x1="200" y1="132" x2="282" y2="112"/>
+        </g>
+        <!-- 撞色星 -->
+        <g stroke="#191919" stroke-width="2.5">
+          <path d="M88 46 l4 8 9 1 -6.5 6 1.5 9 -8 -4.5 -8 4.5 1.5 -9 -6.5 -6 9 -1 Z" fill="#2ec4b6"/>
+          <path d="M150 78 l5.5 11 12 1.5 -8.5 8 2 12 -11 -6 -11 6 2 -12 -8.5 -8 12 -1.5 Z" fill="#ffd23f"/>
+          <path d="M232 50 l4.5 9 10 1 -7 7 1.5 10 -9 -5 -9 5 1.5 -10 -7 -7 10 -1 Z" fill="#ff9ecf"/>
+          <circle cx="282" cy="112" r="9" fill="#6c4cf1"/>
+          <circle cx="118" cy="140" r="8" fill="#ff5d3b"/>
+          <circle cx="200" cy="132" r="9.5" fill="#2ec4b6"/>
+        </g>
+        <g fill="#fdfcf7">
+          <circle cx="285" cy="109" r="2"/><circle cx="121" cy="137" r="1.8"/><circle cx="203" cy="129" r="2"/>
+        </g>
+        <g fill="#191919" font-size="9.5" text-anchor="middle" font-weight="800">
+          <text x="88" y="38">新项目</text><text x="150" y="122">工作的意义</text>
+          <text x="232" y="42">和妈妈通话</text><text x="282" y="136">健身</text>
+          <text x="118" y="162">睡眠</text><text x="200" y="156">猫</text>
+        </g>
+        <text x="330" y="26" font-size="15" fill="#ff5d3b" font-weight="900" transform="rotate(12 330 26)">✚</text>
+        <circle cx="30" cy="160" r="5" fill="none" stroke="#6c4cf1" stroke-width="3"/>
+      </svg>
+    </div>
+    <div class="chips">
+      <span class="chip">10/18</span><span class="chip">10/19</span><span class="chip">10/20</span>
+      <span class="chip on">10/21</span><span class="chip">10/22</span><span class="chip">10/23</span>
+    </div>
+  </section>
+
+  <!-- 报告 -->
+  <div class="sec"><span class="sq" style="background:var(--yellow)"></span><h2>今日报告</h2><div class="line"></div><span>DAILY</span></div>
+  <section class="report">
+    <span class="clip">已留痕</span>
+    <blockquote>「忙了一整天，回头一看好像什么都没留下。但撸猫那十分钟，是真的放松。」</blockquote>
+    <div class="src">—— 你今天的原话</div>
+    <p class="body">「什么都没留下」这个月第三次出现。它总在你一直付出、没人鼓掌的日子来。今晚不必总结，也不必改进，坐一会儿就好。</p>
+    <div class="actions">
+      <div class="btn btn-primary">读完整报告</div>
+      <div class="btn btn-ghost">说得对</div>
+      <div class="btn btn-ghost">不太对</div>
+    </div>
+  </section>
+
+  <div class="spec">
+    <b>风格 11 · 潮流撞色（Color Clash · 温酒大人式重做）</b><br>
+    气质：奶油底 + 高饱和撞色块 + 粗描边手绘图标 + 硬投影贴纸，新丑潮流感。每张图标配色和造型都是独立设计的「小插画」，而不是素材库通用件。<br>
+    配色：#f5f0e4 奶油 / #6c4cf1 紫 / #ffd23f 黄 / #2ec4b6 青 / #ff5d3b 橙红<br>
+    特征：2.5px 黑描边、5px 硬投影、孟菲斯装饰、按压式按钮、描边 SVG 插画图标
+    <div class="swatches">
+      <span class="sw" style="background:#f5f0e4"></span><span class="sw" style="background:#6c4cf1"></span>
+      <span class="sw" style="background:#ffd23f"></span><span class="sw" style="background:#2ec4b6"></span>
+      <span class="sw" style="background:#ff5d3b"></span><span class="sw" style="background:#ff9ecf"></span>
+    </div>
+  </div>
+</div>
+
+<nav class="tabbar">
+  <div class="tab on"><i>★</i>首页</div>
+  <div class="tab"><i>✦</i>星图</div>
+  <div class="tab"><i>▤</i>报告</div>
+  <div class="tab"><i>☺</i>小星</div>
+  <div class="tab"><i>●</i>我的</div>
+</nav>
+</body>
+</html>

@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>风格 07 · 像素星球 RPG | 星图视觉参考</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --space:#1b1f3b;
+    --space-deep:#12152e;
+    --panel:#2a2f55;
+    --panel-lite:#3a4080;
+    --cream:#f4edd8;
+    --px-white:#f8f4e6;
+    --yellow:#ffd34d;
+    --red:#ff6b6b;
+    --green:#6bdc8f;
+    --blue:#6bb8ff;
+    --purple:#c08bff;
+    --pink:#ff9ad5;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{
+    font-family:"PingFang SC","Microsoft YaHei",-apple-system,sans-serif;
+    background:var(--space-deep);color:var(--px-white);min-height:100vh;
+  }
+  .px{font-family:"Press Start 2P",monospace}
+  .wrap{max-width:460px;margin:0 auto;padding:26px 20px 130px;position:relative}
+
+  /* 像素星空背景 */
+  .sky{position:fixed;inset:0;pointer-events:none;z-index:0}
+  .sky i{position:absolute;width:3px;height:3px;background:#f8f4e6;animation:tw 2.4s steps(2) infinite}
+  @keyframes tw{50%{opacity:.15}}
+  .wrap{ z-index:1}
+
+  /* 像素边框通用 */
+  .pxbox{
+    position:relative;background:var(--panel);
+    border:3px solid var(--px-white);
+    box-shadow:inset -4px -4px 0 rgba(0,0,0,.3), inset 4px 4px 0 rgba(255,255,255,.08);
+    image-rendering:pixelated;
+  }
+  .pxbox::after{
+    content:"";position:absolute;inset:3px;pointer-events:none;
+    border:2px dashed rgba(248,244,230,.14);
+  }
+
+  .topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px}
+  .logo{display:flex;align-items:center;gap:10px}
+  .logo .flag{
+    font-family:"Press Start 2P",monospace;font-size:12px;color:var(--yellow);
+    text-shadow:2px 2px 0 rgba(0,0,0,.5);letter-spacing:1px;
+  }
+  .logo .cn{font-size:19px;font-weight:800;letter-spacing:4px}
+  .lv{
+    font-family:"Press Start 2P",monospace;font-size:9px;background:var(--red);color:#fff;
+    padding:6px 9px;border:2px solid var(--px-white);box-shadow:2px 2px 0 rgba(0,0,0,.4);
+  }
+
+  /* 状态条 */
+  .stats{padding:14px 16px;margin-bottom:22px}
+  .stat{display:flex;align-items:center;gap:10px;margin-bottom:10px;font-size:11px}
+  .stat:last-child{margin-bottom:0}
+  .stat .icn{width:22px;text-align:center}
+  .stat .lbl{width:52px;letter-spacing:1px;color:#c9cdea}
+  .bar{flex:1;height:12px;background:rgba(0,0,0,.4);border:2px solid var(--px-white);position:relative}
+  .bar i{position:absolute;inset:1px auto 1px 1px}
+  .b-hp i{background:repeating-linear-gradient(90deg,var(--red) 0 6px,#d94f4f 6px 8px);width:72%}
+  .b-mp i{background:repeating-linear-gradient(90deg,var(--blue) 0 6px,#4f94d9 6px 8px);width:58%}
+  .b-xp i{background:repeating-linear-gradient(90deg,var(--yellow) 0 6px,#e0b53d 6px 8px);width:83%}
+  .stat .val{font-family:"Press Start 2P",monospace;font-size:8px;color:#c9cdea;width:56px;text-align:right}
+
+  /* NPC 对话框 */
+  .dialog{padding:18px 18px 16px;margin-bottom:24px;position:relative}
+  .dialog .npc{
+    position:absolute;top:-16px;left:14px;display:flex;align-items:center;gap:8px;
+    background:var(--yellow);color:#3a2c00;border:2px solid var(--px-white);
+    font-size:11px;font-weight:800;padding:5px 12px;box-shadow:2px 2px 0 rgba(0,0,0,.4);
+  }
+  .dialog p{font-size:13.5px;line-height:2;margin-top:8px}
+  .dialog p b{color:var(--yellow)}
+  .dialog .next{
+    position:absolute;bottom:8px;right:14px;font-size:12px;color:var(--yellow);
+    animation:blink 1s steps(2) infinite;
+  }
+  @keyframes blink{50%{opacity:0}}
+
+  /* 入口：选项菜单 */
+  .menu-title{
+    font-family:"Press Start 2P",monospace;font-size:9px;color:#9aa0d0;
+    letter-spacing:2px;margin:0 2px 12px;
+  }
+  .opt{
+    display:flex;align-items:center;gap:14px;padding:16px 16px;margin-bottom:12px;cursor:pointer;
+    transition:none;
+  }
+  .opt:hover{background:var(--panel-lite)}
+  .opt:hover .sel{opacity:1}
+  .opt .sel{
+    font-size:16px;color:var(--yellow);opacity:0;
+  }
+  .opt .icn{
+    width:44px;height:44px;border:2px solid var(--px-white);display:flex;align-items:center;justify-content:center;
+    font-size:20px;background:rgba(0,0,0,.25);box-shadow:inset -3px -3px 0 rgba(0,0,0,.3);
+  }
+  .opt h3{font-size:16px;font-weight:800;letter-spacing:2px}
+  .opt p{font-size:10.5px;color:#9aa0d0;margin-top:5px;letter-spacing:1px}
+
+  /* 心情色：道具卡 */
+  .item{display:flex;gap:16px;align-items:center;padding:16px;margin-bottom:24px}
+  .item .gem{
+    width:60px;height:60px;flex:none;display:flex;align-items:center;justify-content:center;font-size:28px;
+    background:linear-gradient(135deg,#ffd34d,#ff9ad5 60%,#c08bff);
+    border:3px solid var(--px-white);box-shadow:inset -4px -4px 0 rgba(0,0,0,.25), 3px 3px 0 rgba(0,0,0,.35);
+  }
+  .item .tag{font-family:"Press Start 2P",monospace;font-size:8px;color:var(--yellow);margin-bottom:8px}
+  .item h3{font-size:15px;font-weight:800;margin-bottom:6px}
+  .item p{font-size:11.5px;color:#c9cdea;line-height:1.8}
+  .item .rare{font-size:9px;color:var(--pink);letter-spacing:1px;margin-top:6px}
+
+  /* 星图：像素雷达 */
+  .radar{padding:12px;margin-bottom:24px;background:#0e1130}
+  .radar svg{width:100%;display:block;image-rendering:pixelated}
+  .chips{display:flex;gap:6px;justify-content:center;margin-top:10px;flex-wrap:wrap}
+  .chip{
+    font-family:"Press Start 2P",monospace;font-size:8px;color:#9aa0d0;
+    border:2px solid #4a5088;padding:6px 8px;background:rgba(0,0,0,.3);
+  }
+  .chip.on{color:#12152e;background:var(--yellow);border-color:var(--px-white)}
+
+  /* 报告：任务日志 */
+  .quest{padding:18px;margin-bottom:14px}
+  .quest .qhead{
+    display:flex;justify-content:space-between;align-items:center;
+    font-family:"Press Start 2P",monospace;font-size:8px;color:var(--green);margin-bottom:14px;
+  }
+  .quest blockquote{
+    font-size:13.5px;line-height:2;border-left:4px solid var(--yellow);padding-left:14px;margin-bottom:10px;
+  }
+  .quest .src{font-size:10.5px;color:#9aa0d0;text-align:right}
+  .quest .body{font-size:12.5px;color:#c9cdea;line-height:2;margin-top:12px}
+  .quest .reward{
+    margin-top:14px;padding:10px 12px;background:rgba(0,0,0,.3);border:2px dashed #4a5088;
+    font-size:11px;display:flex;gap:8px;align-items:center;
+  }
+  .quest .reward b{color:var(--yellow)}
+  .actions{display:flex;gap:10px;margin-top:16px}
+  .btn{
+    flex:1;text-align:center;font-size:12px;font-weight:800;letter-spacing:2px;padding:13px 0;
+    border:3px solid var(--px-white);cursor:pointer;
+    box-shadow:inset -3px -3px 0 rgba(0,0,0,.3);
+  }
+  .btn:active{transform:translateY(2px)}
+  .btn-primary{background:var(--red);color:#fff}
+  .btn-ghost{background:var(--panel);color:#9aa0d0}
+
+  .tabbar{
+    position:fixed;left:50%;transform:translateX(-50%);bottom:0;z-index:10;
+    width:100%;max-width:460px;
+    display:flex;justify-content:space-around;
+    background:var(--panel);border-top:3px solid var(--px-white);
+    padding:10px 6px 14px;
+  }
+  .tab{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:10px;color:#9aa0d0}
+  .tab i{font-style:normal;font-size:17px}
+  .tab.on{color:var(--yellow)}
+  .tab.on::before{content:"▶";font-size:8px;position:absolute;margin-left:-26px;margin-top:6px}
+
+  .spec{margin-top:34px;font-size:11px;color:#9aa0d0;line-height:2;border-top:2px dashed #4a5088;padding-top:16px}
+  .spec b{color:var(--px-white)}
+  .swatches{display:flex;gap:6px;margin-top:8px}
+  .sw{width:26px;height:26px;border:2px solid var(--px-white)}
+</style>
+</head>
+<body>
+<div class="sky" id="sky"></div>
+
+<div class="wrap">
+  <header class="topbar">
+    <div class="logo">
+      <div>
+        <div class="flag">STAR MAP</div>
+        <div class="cn">星图</div>
+      </div>
+    </div>
+    <div class="lv">Lv.18</div>
+  </header>
+
+  <!-- 玩家状态 -->
+  <section class="pxbox stats">
+    <div class="stat"><span class="icn">❤️</span><span class="lbl">心力</span><div class="bar b-hp"><i></i></div><span class="val">72/100</span></div>
+    <div class="stat"><span class="icn">🔮</span><span class="lbl">能量</span><div class="bar b-mp"><i></i></div><span class="val">58/100</span></div>
+    <div class="stat"><span class="icn">⭐</span><span class="lbl">星光</span><div class="bar b-xp"><i></i></div><span class="val">23 颗</span></div>
+  </section>
+
+  <!-- NPC 小星 -->
+  <section class="pxbox dialog">
+    <div class="npc">🌟 小星</div>
+    <p>晚上好，阿澄！检测到「<b>工作的意义</b>」星域近 7 天活跃度 <b>▲40%</b>……要一起去巡逻吗？还是说，先把今天存档？</p>
+    <span class="next">▼</span>
+  </section>
+
+  <!-- 主菜单 -->
+  <div class="menu-title">— SELECT · 今晚的行动 —</div>
+  <div class="pxbox opt">
+    <span class="sel">▶</span>
+    <span class="icn">🗺️</span>
+    <div><h3>记录星图</h3><p>把今天存档 · 聊几句或直接填</p></div>
+  </div>
+  <div class="pxbox opt" style="margin-bottom:24px">
+    <span class="sel">▶</span>
+    <span class="icn">💬</span>
+    <div><h3>和小星聊聊</h3><p>NPC 对话 · 测验副本 · 树洞</p></div>
+  </div>
+
+  <!-- 心情色道具 -->
+  <div class="menu-title">— ITEM · 今日掉落 —</div>
+  <section class="pxbox item">
+    <div class="gem">💎</div>
+    <div>
+      <div class="tag">MOOD CRYSTAL</div>
+      <h3>琥珀玫瑰水晶</h3>
+      <p>属性：疲惫 +3 / 温热 +5。据说在「撸猫」场景中获得。</p>
+      <div class="rare">★ RARE · 本月第 3 次拾取</div>
+    </div>
+  </section>
+
+  <!-- 星图雷达 -->
+  <div class="menu-title">— MAP · 内心星域 —</div>
+  <section class="pxbox radar">
+    <svg viewBox="0 0 360 190">
+      <!-- 像素网格 -->
+      <g stroke="#2a2f55" stroke-width="2">
+        <line x1="0" y1="47" x2="360" y2="47"/><line x1="0" y1="95" x2="360" y2="95"/><line x1="0" y1="143" x2="360" y2="143"/>
+        <line x1="72" y1="0" x2="72" y2="190"/><line x1="144" y1="0" x2="144" y2="190"/>
+        <line x1="216" y1="0" x2="216" y2="190"/><line x1="288" y1="0" x2="288" y2="190"/>
+      </g>
+      <!-- 连线：像素折线 -->
+      <g stroke="#6bb8ff" stroke-width="3" opacity=".55" fill="none">
+        <path d="M88 60 h30 v18 h32 v18"/>
+        <path d="M150 96 h40 v-14 h42 v-14"/>
+        <path d="M232 68 h28 v22 h22 v22"/>
+        <path d="M150 96 h-16 v23 h-16 v23"/>
+        <path d="M118 142 h41 v-4 h41 v-4"/>
+        <path d="M200 134 h41 v-11 h41 v-11"/>
+      </g>
+      <!-- 像素星 -->
+      <g>
+        <rect x="82" y="54" width="12" height="12" fill="#6bdc8f"/>
+        <rect x="143" y="89" width="16" height="16" fill="#ffd34d"/>
+        <rect x="225" y="61" width="13" height="13" fill="#ff9ad5"/>
+        <rect x="276" y="106" width="11" height="11" fill="#6bb8ff"/>
+        <rect x="112" y="136" width="11" height="11" fill="#c08bff"/>
+        <rect x="194" y="128" width="13" height="13" fill="#ff6b6b"/>
+      </g>
+      <g fill="#12152e">
+        <rect x="86" y="58" width="4" height="4"/><rect x="148" y="94" width="5" height="5"/>
+        <rect x="229" y="65" width="4" height="4"/>
+      </g>
+      <g fill="#f8f4e6" font-size="9" text-anchor="middle" font-weight="700">
+        <text x="88" y="46">新项目</text><text x="151" y="121">工作的意义</text>
+        <text x="232" y="53">和妈妈通话</text><text x="281" y="132">健身</text>
+        <text x="117" y="162">睡眠</text><text x="200" y="154">猫</text>
+      </g>
+      <!-- 玩家光标 -->
+      <g fill="#ffd34d">
+        <rect x="148" y="82" width="4" height="4"/><rect x="159" y="82" width="4" height="4"/>
+        <rect x="141" y="94" width="4" height="4"/><rect x="163" y="94" width="4" height="4"/>
+      </g>
+    </svg>
+    <div class="chips">
+      <span class="chip">D1</span><span class="chip">D2</span><span class="chip">D3</span>
+      <span class="chip on">D4</span><span class="chip">D5</span><span class="chip">D6</span>
+    </div>
+  </section>
+
+  <!-- 任务日志 -->
+  <div class="menu-title">— QUEST LOG · 今日报告 —</div>
+  <section class="pxbox quest">
+    <div class="qhead"><span>QUEST #018</span><span>STATUS: CLEAR ★</span></div>
+    <blockquote>「忙了一整天，回头一看好像什么都没留下。但撸猫那十分钟，是真的放松。」</blockquote>
+    <div class="src">—— 玩家原话 · 已存档</div>
+    <p class="body">系统检测到「什么都没留下」debuff 本月第 3 次触发，触发条件均为：连续输出 + 无即时反馈。建议今晚停止接取任何「有用」任务。</p>
+    <div class="reward"><span>🎁</span><span>完成奖励：<b>十分钟撸猫时间 ×1</b>（已发放）</span></div>
+    <div class="actions">
+      <div class="btn btn-primary">读完整报告</div>
+      <div class="btn btn-ghost">说得对</div>
+      <div class="btn btn-ghost">不太对</div>
+    </div>
+  </section>
+
+  <div class="spec">
+    <b>风格 07 · 像素星球 RPG（Pixel Quest）</b><br>
+    气质：8-bit 游戏机 + 任务日志 + 道具掉落，把「记录」变成「存档」、「报告」变成「任务结算」。游戏感与活人感拉满，最适合 demo 演示讲故事。<br>
+    配色：#12152e 宇宙底 / #ffd34d 金币黄 / #ff6b6b 血条红 / #6bb8ff 魔法蓝<br>
+    特征：3px 硬边框、内凹像素阴影、步骤动画（无缓动）、折线代替曲线
+    <div class="swatches">
+      <span class="sw" style="background:#12152e"></span><span class="sw" style="background:#2a2f55"></span>
+      <span class="sw" style="background:#ffd34d"></span><span class="sw" style="background:#ff6b6b"></span>
+      <span class="sw" style="background:#6bb8ff"></span><span class="sw" style="background:#6bdc8f"></span>
+    </div>
+  </div>
+</div>
+
+<nav class="tabbar">
+  <div class="tab on"><i>🏠</i>首页</div>
+  <div class="tab"><i>🗺️</i>星图</div>
+  <div class="tab"><i>📜</i>报告</div>
+  <div class="tab"><i>💬</i>小星</div>
+  <div class="tab"><i>🎒</i>我的</div>
+</nav>
+
+<script>
+const sky=document.getElementById('sky');
+for(let i=0;i<70;i++){
+  const s=document.createElement('i');
+  s.style.left=Math.random()*100+'%';
+  s.style.top=Math.random()*100+'%';
+  s.style.animationDelay=(Math.random()*2.4)+'s';
+  if(Math.random()>.7)s.style.background=['#ffd34d','#6bb8ff','#ff9ad5'][i%3];
+  sky.appendChild(s);
+}
+</script>
+</body>
+</html>

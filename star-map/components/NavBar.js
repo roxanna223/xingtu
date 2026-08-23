@@ -4,15 +4,17 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
+// 像素顶栏（logo + 用户）+ 底部像素 tab 导航
 export default function NavBar() {
   const path = usePathname()
   const [user, setUser] = useState(null)
-  const items = [
-    ['/record', '记录'],
-    ['/chat', '小星'],
-    ['/star-map', '星图'],
-    ['/report', '报告'],
-    ['/tests', '测试'],
+
+  const tabs = [
+    ['/', '🏠', '首页'],
+    ['/record', '🗺️', '记录'],
+    ['/star-map', '🌌', '星图'],
+    ['/report', '📜', '报告'],
+    ['/chat', '💬', '小星'],
   ]
 
   useEffect(() => {
@@ -25,22 +27,32 @@ export default function NavBar() {
   }
 
   return (
-    <div className="nav-wrap">
-      <nav className="nav">
-        <Link href="/" className={path === '/' ? 'nav-logo on' : 'nav-logo'}>✦ 星图</Link>
-        {items.map(([href, label]) => (
-          <Link key={href} href={href} className={path === href ? 'nav-item active' : 'nav-item'}>
+    <>
+      <div className="topbar">
+        <div className="topbar-in">
+          <Link href="/" className="topbar-logo">
+            <span className="flag">STAR MAP</span>
+            <span className="cn">星图</span>
+          </Link>
+          <span className="topbar-user">
+            {user && (
+              <>
+                <span>{user.starSymbol ? `${user.starSymbol} ` : '✦ '}<b>{user.username}</b></span>
+                <button className="login-skip" onClick={logout}>退出</button>
+              </>
+            )}
+          </span>
+        </div>
+      </div>
+
+      <nav className="tabbar">
+        {tabs.map(([href, icon, label]) => (
+          <Link key={href} href={href} className={path === href ? 'tab on' : 'tab'}>
+            <i>{icon}</i>
             {label}
           </Link>
         ))}
-        <span style={{ flex: 1 }} />
-        {user && (
-          <span className="nav-user">
-            {user.starSymbol ? `${user.starSymbol} ` : '✦ '}{user.username}
-            <button className="nav-logout" onClick={logout}>退出</button>
-          </span>
-        )}
       </nav>
-    </div>
+    </>
   )
 }

@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>风格 03 · 东方星宿 | 星图视觉参考</title>
+<style>
+  :root{
+    --paper:#f4eee1;
+    --paper-deep:#ece4d2;
+    --ink:#26241f;
+    --ink-70:#57534a;
+    --ink-40:#96907f;
+    --cinnabar:#b23a2a;
+    --cinnabar-deep:#932b1e;
+    --gold:#a9853d;
+    --azure:#3e5c76;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{
+    font-family:"Noto Serif SC","Source Han Serif SC","STSong","SimSun",serif;
+    background:var(--paper);
+    color:var(--ink);
+    min-height:100vh;
+    background-image:
+      radial-gradient(rgba(120,100,60,.05) 1px, transparent 1px),
+      radial-gradient(rgba(120,100,60,.04) 1px, transparent 1px);
+    background-size:22px 22px, 22px 22px;
+    background-position:0 0, 11px 11px;
+  }
+  /* 淡墨晕染 */
+  .wash{position:fixed;border-radius:50%;filter:blur(60px);pointer-events:none;opacity:.35}
+  .w1{width:420px;height:420px;background:#d8cdb2;top:-160px;left:-120px}
+  .w2{width:300px;height:300px;background:#c9bfa4;bottom:-100px;right:-100px}
+
+  .wrap{position:relative;max-width:460px;margin:0 auto;padding:30px 24px 110px}
+
+  .topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:36px;padding-bottom:18px;border-bottom:1px solid rgba(38,36,31,.18)}
+  .logo{display:flex;align-items:center;gap:12px}
+  .seal{
+    width:38px;height:38px;background:var(--cinnabar);color:#f8f2e6;border-radius:7px;
+    display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;
+    box-shadow:2px 2px 0 rgba(38,36,31,.15);letter-spacing:0;
+    font-family:"Noto Serif SC","STSong",serif;
+  }
+  .logo .name{font-size:21px;font-weight:700;letter-spacing:10px}
+  .logo .sub{font-size:9.5px;color:var(--ink-40);letter-spacing:3px;margin-top:3px}
+  .avatar{
+    width:38px;height:38px;border-radius:50%;border:1px solid var(--ink);
+    display:flex;align-items:center;justify-content:center;font-size:14px;
+  }
+
+  .hero{margin-bottom:34px;position:relative}
+  .hero .vtext{
+    position:absolute;right:-6px;top:0;writing-mode:vertical-rl;
+    font-size:10.5px;color:var(--ink-40);letter-spacing:6px;
+  }
+  .hero .date{font-size:12px;color:var(--cinnabar);letter-spacing:3px;margin-bottom:14px}
+  .hero h1{font-size:30px;font-weight:700;line-height:1.6;letter-spacing:3px}
+  .hero .rule{width:56px;height:3px;background:var(--cinnabar);margin:18px 0 14px}
+  .hero p{font-size:13px;color:var(--ink-70);line-height:2.1;letter-spacing:1px}
+
+  .card{
+    background:var(--paper-deep);
+    border:1px solid rgba(38,36,31,.22);
+    padding:22px;position:relative;
+    box-shadow:3px 3px 0 rgba(38,36,31,.08);
+  }
+  .card::before,.card::after{
+    content:"";position:absolute;width:10px;height:10px;border:1.5px solid var(--ink);
+  }
+  .card::before{top:-1px;left:-1px;border-right:none;border-bottom:none}
+  .card::after{bottom:-1px;right:-1px;border-left:none;border-top:none}
+
+  .entries{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:26px}
+  .entry{min-height:150px;display:flex;flex-direction:column;justify-content:space-between;cursor:pointer;transition:.25s}
+  .entry:hover{transform:translate(-2px,-2px);box-shadow:5px 5px 0 rgba(178,58,42,.28);border-color:var(--cinnabar)}
+  .entry .glyph{font-size:24px;color:var(--cinnabar)}
+  .entry h3{font-size:16px;font-weight:700;letter-spacing:3px;margin:12px 0 6px}
+  .entry p{font-size:11px;color:var(--ink-70);line-height:1.9;letter-spacing:1px}
+
+  .mood{display:flex;gap:20px;align-items:center;margin-bottom:26px}
+  .taiji{
+    flex:none;width:74px;height:74px;border-radius:50%;border:1.5px solid var(--ink);
+    background:conic-gradient(from 210deg, #e8a37a, #d9c07a, #8fa3b8, #e8a37a);
+    position:relative;opacity:.9;
+  }
+  .taiji::after{content:"今日";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    font-size:13px;font-weight:700;color:var(--ink);letter-spacing:2px;background:rgba(244,238,225,.55);border-radius:50%}
+  .mood .tag{font-size:10.5px;letter-spacing:3px;color:var(--cinnabar);margin-bottom:7px;font-weight:700}
+  .mood h3{font-size:16px;font-weight:700;letter-spacing:2px;margin-bottom:7px}
+  .mood p{font-size:12px;color:var(--ink-70);line-height:1.95;letter-spacing:.5px}
+
+  .section-title{display:flex;align-items:center;gap:14px;margin:0 2px 16px}
+  .section-title h2{font-size:15px;font-weight:700;letter-spacing:4px;white-space:nowrap}
+  .section-title .line{flex:1;height:1px;background:rgba(38,36,31,.25)}
+  .section-title span{font-size:10.5px;color:var(--ink-40);letter-spacing:2px;white-space:nowrap}
+
+  .starmap{padding:16px 8px 18px;margin-bottom:26px;background:#efe8d8}
+  .starmap svg{width:100%;display:block}
+  .chips{display:flex;gap:10px;justify-content:center;margin-top:10px}
+  .chip{font-size:10.5px;color:var(--ink-70);border:1px solid rgba(38,36,31,.3);padding:4px 11px;letter-spacing:1px}
+  .chip.on{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+
+  .report{margin-bottom:14px}
+  .report blockquote{
+    font-size:14.5px;line-height:2.15;color:var(--ink);letter-spacing:1.5px;
+    border-left:3px solid var(--cinnabar);padding-left:16px;margin:8px 0 10px;
+  }
+  .report .quote-src{font-size:11px;color:var(--ink-40);letter-spacing:1px}
+  .report p.body{font-size:13px;color:var(--ink-70);line-height:2.1;letter-spacing:1px;margin-top:12px}
+  .actions{display:flex;gap:12px;margin-top:20px}
+  .btn{flex:1;text-align:center;font-size:12.5px;letter-spacing:3px;padding:13px 0;cursor:pointer;transition:.25s;font-weight:700}
+  .btn-primary{background:var(--cinnabar);color:#f8f2e6;box-shadow:3px 3px 0 rgba(38,36,31,.2)}
+  .btn-primary:hover{background:var(--cinnabar-deep)}
+  .btn-ghost{border:1px solid rgba(38,36,31,.4);color:var(--ink-70)}
+  .btn-ghost:hover{border-color:var(--ink);color:var(--ink)}
+
+  .tabbar{
+    position:fixed;left:50%;transform:translateX(-50%);bottom:0;z-index:10;
+    width:100%;max-width:460px;
+    display:flex;justify-content:space-around;
+    background:var(--paper);border-top:1px solid rgba(38,36,31,.25);
+    padding:12px 8px 16px;
+  }
+  .tab{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:10.5px;color:var(--ink-40);letter-spacing:2px}
+  .tab i{font-style:normal;font-size:16px}
+  .tab.on{color:var(--cinnabar);font-weight:700}
+
+  .spec{margin-top:36px;font-size:11px;color:var(--ink-70);line-height:2.1;border-top:1px solid rgba(38,36,31,.25);padding-top:16px;letter-spacing:1px}
+  .spec b{color:var(--ink)}
+  .swatches{display:flex;gap:8px;margin-top:8px}
+  .sw{width:26px;height:26px;border:1px solid rgba(38,36,31,.3)}
+</style>
+</head>
+<body>
+<div class="wash w1"></div><div class="wash w2"></div>
+
+<div class="wrap">
+  <header class="topbar">
+    <div class="logo">
+      <div class="seal">星</div>
+      <div>
+        <div class="name">星图</div>
+        <div class="sub">INNER&nbsp;ATLAS</div>
+      </div>
+    </div>
+    <div class="avatar">澄</div>
+  </header>
+
+  <section class="hero">
+    <div class="vtext">甲辰年 · 九月廿二 · 宜内省</div>
+    <div class="date">九月廿二 · 记录第十八日</div>
+    <h1>晚间安好，阿澄。<br>星河低垂，宜与自己<br>对坐片刻。</h1>
+    <div class="rule"></div>
+    <p>图上已有星二十三颗。「工作之意义」一宿近来最亮，七日之内增辉四成，似有心事欲诉。</p>
+  </section>
+
+  <section class="entries">
+    <div class="card entry">
+      <span class="glyph">✎</span>
+      <div><h3>记录星图</h3><p>理清今日<br>或叙或填，皆随君意</p></div>
+    </div>
+    <div class="card entry">
+      <span class="glyph">☾</span>
+      <div><h3>与小星语</h3><p>相伴星灵<br>测字 · 解忧 · 闲叙</p></div>
+    </div>
+  </section>
+
+  <section class="card mood">
+    <div class="taiji"></div>
+    <div>
+      <div class="tag">今日心色 · 琥珀</div>
+      <h3>疲中藏温</h3>
+      <p>今日三言「累」，然语及狸奴时，色转明澈。</p>
+    </div>
+  </section>
+
+  <div class="section-title"><h2>内心星图</h2><div class="line"></div><span>七日流转</span></div>
+  <section class="card starmap">
+    <svg viewBox="0 0 360 200">
+      <!-- 墨线星联 -->
+      <g stroke="#8b8371" stroke-width="1" stroke-dasharray="3 3">
+        <line x1="88" y1="62" x2="150" y2="102"/><line x1="150" y1="102" x2="232" y2="72"/>
+        <line x1="232" y1="72" x2="282" y2="122"/><line x1="150" y1="102" x2="118" y2="152"/>
+        <line x1="118" y1="152" x2="200" y2="142"/><line x1="200" y1="142" x2="282" y2="122"/>
+      </g>
+      <!-- 星点：墨 + 朱砂 -->
+      <g fill="#26241f">
+        <circle cx="88" cy="62" r="4"/><circle cx="282" cy="122" r="3.4"/>
+        <circle cx="118" cy="152" r="3.6"/>
+      </g>
+      <g fill="#b23a2a">
+        <circle cx="150" cy="102" r="6"/><circle cx="232" cy="72" r="4.6"/><circle cx="200" cy="142" r="4.2"/>
+      </g>
+      <!-- 光晕 -->
+      <g fill="none" stroke="#b23a2a" stroke-width=".8" opacity=".5">
+        <circle cx="150" cy="102" r="11"/><circle cx="232" cy="72" r="8.5"/>
+      </g>
+      <g fill="none" stroke="#26241f" stroke-width=".7" opacity=".4">
+        <circle cx="88" cy="62" r="8"/><circle cx="118" cy="152" r="7.5"/>
+      </g>
+      <!-- 竖排感标签 -->
+      <g fill="#57534a" font-size="10" text-anchor="middle" letter-spacing="2">
+        <text x="88" y="46">新项目</text><text x="150" y="128">工作之意义</text>
+        <text x="232" y="56">与母通话</text><text x="282" y="146">健身</text>
+        <text x="118" y="176">眠</text><text x="200" y="166">狸奴</text>
+      </g>
+      <!-- 角标印章 -->
+      <rect x="316" y="14" width="26" height="26" fill="#b23a2a" rx="3"/>
+      <text x="329" y="32" fill="#f8f2e6" font-size="12" text-anchor="middle" font-weight="bold">宿</text>
+    </svg>
+    <div class="chips">
+      <span class="chip">十八</span><span class="chip">十九</span><span class="chip">二十</span>
+      <span class="chip on">廿一</span><span class="chip">廿二</span>
+    </div>
+  </section>
+
+  <div class="section-title"><h2>今日报告</h2><div class="line"></div><span>叙事</span></div>
+  <section class="card report">
+    <blockquote>忙了一整日，回望似无所留。惟撸猫一刻，心神俱松。</blockquote>
+    <div class="quote-src">—— 君今日原话，已存痕</div>
+    <p class="body">「无所留」之感，月内三现。每现于连日输出而未得回响之时。此非君之过，乃节律之示。</p>
+    <div class="actions">
+      <div class="btn btn-primary">览全文</div>
+      <div class="btn btn-ghost">然也</div>
+      <div class="btn btn-ghost">未尽然</div>
+    </div>
+  </section>
+
+  <div class="spec">
+    <b>风格 03 · 东方星宿（Oriental Ink）</b><br>
+    气质：宣纸底 × 墨线 × 朱砂印章，新中式书卷气，差异化最强，适合「长期主义、内省」的品牌叙事。<br>
+    配色：#f4eee1 宣纸 / #26241f 松烟墨 / #b23a2a 朱砂 / #a9853d 赭金<br>
+    字体：宋体/思源宋体，大留白、宽字距；直角卡片 + 角框装饰 + 硬投影
+    <div class="swatches">
+      <span class="sw" style="background:#f4eee1"></span><span class="sw" style="background:#26241f"></span>
+      <span class="sw" style="background:#b23a2a"></span><span class="sw" style="background:#a9853d"></span>
+      <span class="sw" style="background:#3e5c76"></span>
+    </div>
+  </div>
+</div>
+
+<nav class="tabbar">
+  <div class="tab on"><i>⌂</i>首页</div>
+  <div class="tab"><i>✦</i>星图</div>
+  <div class="tab"><i>卷</i>报告</div>
+  <div class="tab"><i>语</i>小星</div>
+  <div class="tab"><i>吾</i>我的</div>
+</nav>
+</body>
+</html>

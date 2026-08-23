@@ -230,7 +230,7 @@ export default function ReportPage() {
                   </div>
                 ))}
                 <p className="muted" style={{ fontSize: 12, marginTop: 6 }}>
-                  主导域：<b style={{ color: '#f5c76a' }}>{report.dominantDomain || '—'}</b> · 活跃主题：{report.topTopics?.join('、') || '—'}
+                  主导域：<b style={{ color: 'var(--yellow)' }}>{report.dominantDomain || '—'}</b> · 活跃主题：{report.topTopics?.join('、') || '—'}
                 </p>
               </div>
             )}

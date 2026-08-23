@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>风格 12 · 静夜书房 | 星图视觉参考</title>
+<style>
+  :root{
+    --bg:#1c1917;
+    --panel:#242019;
+    --panel2:#2a251d;
+    --line:#453d31;
+    --lamp:#e8b76a;
+    --lamp-hi:#f5d9a8;
+    --txt:#e6ded0;
+    --txt-dim:#a29781;
+    --txt-faint:#6e6355;
+    --sage:#9aa88c;
+    --rust:#c07b54;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{
+    font-family:"Noto Serif SC","Source Han Serif SC","STSong",Georgia,serif;
+    background:var(--bg);color:var(--txt);min-height:100vh;overflow-x:hidden;
+  }
+  /* 台灯光锥 */
+  .lampglow{
+    position:fixed;top:-60px;left:50%;transform:translateX(-50%);
+    width:560px;height:480px;pointer-events:none;z-index:0;
+    background:radial-gradient(ellipse 300px 380px at 50% 0%, rgba(232,183,106,.16), rgba(232,183,106,.05) 45%, transparent 70%);
+  }
+  .grain{
+    position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.5;
+    background-image:radial-gradient(rgba(255,255,255,.025) 1px,transparent 1px);
+    background-size:4px 4px;
+  }
+  .wrap{position:relative;z-index:1;max-width:460px;margin:0 auto;padding:30px 24px 120px}
+
+  .topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:38px}
+  .logo{font-size:19px;letter-spacing:8px;color:var(--txt)}
+  .logo i{font-style:normal;color:var(--lamp)}
+  .time{font-size:10.5px;color:var(--txt-faint);letter-spacing:3px;font-family:Menlo,monospace}
+
+  .hero{margin-bottom:40px}
+  .hero .lamp-icn{
+    width:52px;height:52px;margin-bottom:24px;position:relative;
+  }
+  .hero .lamp-icn::after{
+    content:"";position:absolute;left:50%;top:44px;transform:translateX(-50%);
+    width:90px;height:70px;
+    background:radial-gradient(ellipse at 50% 0%, rgba(232,183,106,.22), transparent 68%);
+  }
+  .hero h1{font-size:25px;font-weight:600;line-height:2;letter-spacing:2px;color:var(--txt)}
+  .hero h1 em{font-style:normal;color:var(--lamp-hi);border-bottom:1px solid var(--rust);padding-bottom:2px}
+  .hero p{
+    margin-top:18px;font-size:12.5px;color:var(--txt-dim);line-height:2.2;letter-spacing:1px;max-width:26em;
+  }
+  .hero .date{
+    margin-top:22px;font-size:10px;color:var(--txt-faint);letter-spacing:3px;
+  }
+
+  .card{
+    background:var(--panel);border:1px solid var(--line);border-radius:6px;
+    padding:22px;position:relative;
+  }
+
+  /* 入口：书桌抽屉 */
+  .entries{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:32px}
+  .entry{
+    min-height:132px;display:flex;flex-direction:column;justify-content:space-between;
+    cursor:pointer;transition:.3s;
+  }
+  .entry:hover{background:var(--panel2);border-color:#5a4f3e}
+  .entry .glyph{font-size:20px;color:var(--lamp)}
+  .entry h3{font-size:15.5px;font-weight:600;letter-spacing:3px;margin:14px 0 6px}
+  .entry p{font-size:10.5px;color:var(--txt-dim);line-height:1.9;letter-spacing:.5px}
+  .entry .no{
+    position:absolute;top:14px;right:16px;font-size:9px;color:var(--txt-faint);
+    font-family:Menlo,monospace;letter-spacing:1px;
+  }
+
+  /* 心情色：烛火 */
+  .mood{display:flex;gap:20px;align-items:center;margin-bottom:32px}
+  .candle{
+    flex:none;width:64px;height:64px;border-radius:50%;position:relative;
+    background:radial-gradient(circle at 50% 42%, var(--lamp-hi) 0%, var(--lamp) 28%, var(--rust) 62%, transparent 72%);
+    box-shadow:0 0 30px rgba(232,183,106,.35), 0 0 70px rgba(232,183,106,.14);
+    animation:flicker 3.5s ease-in-out infinite;
+  }
+  @keyframes flicker{
+    0%,100%{box-shadow:0 0 30px rgba(232,183,106,.35),0 0 70px rgba(232,183,106,.14)}
+    50%{box-shadow:0 0 36px rgba(232,183,106,.45),0 0 84px rgba(232,183,106,.2)}
+  }
+  .mood .tag{font-size:9.5px;letter-spacing:3px;color:var(--rust);margin-bottom:9px}
+  .mood h3{font-size:16px;font-weight:600;letter-spacing:2px;margin-bottom:8px}
+  .mood p{font-size:11.5px;color:var(--txt-dim);line-height:2;letter-spacing:.5px}
+
+  .sec{
+    display:flex;align-items:baseline;gap:12px;margin:0 2px 16px;
+  }
+  .sec h2{font-size:13px;font-weight:600;letter-spacing:5px;color:var(--txt)}
+  .sec .line{flex:1;height:1px;background:var(--line)}
+  .sec span{font-size:9.5px;color:var(--txt-faint);letter-spacing:2px;font-family:Menlo,monospace}
+
+  /* 星图：夜空观测 */
+  .sky{padding:14px 8px 16px;margin-bottom:32px;background:#181512}
+  .sky svg{width:100%;display:block}
+  .chips{display:flex;gap:8px;justify-content:center;margin-top:12px}
+  .chip{
+    font-size:10px;color:var(--txt-faint);border:1px solid var(--line);padding:5px 11px;
+    border-radius:999px;letter-spacing:1px;
+  }
+  .chip.on{color:var(--lamp-hi);border-color:var(--lamp)}
+
+  /* 报告 */
+  .report{margin-bottom:16px}
+  .report blockquote{
+    font-size:14.5px;line-height:2.3;letter-spacing:1.5px;color:var(--txt);
+    border-left:2px solid var(--lamp);padding-left:18px;margin:4px 0 12px;
+  }
+  .report .src{font-size:10px;color:var(--txt-faint);letter-spacing:2px}
+  .report .body{
+    font-size:12.5px;color:var(--txt-dim);line-height:2.3;letter-spacing:1px;margin-top:14px;
+    padding-top:14px;border-top:1px solid var(--line);
+  }
+  .actions{display:flex;gap:12px;margin-top:20px}
+  .btn{
+    flex:1;text-align:center;font-size:12px;letter-spacing:3px;padding:13px 0;cursor:pointer;
+    transition:.3s;border-radius:4px;
+  }
+  .btn-primary{background:var(--lamp);color:#241c10;font-weight:700}
+  .btn-primary:hover{background:var(--lamp-hi)}
+  .btn-ghost{border:1px solid var(--line);color:var(--txt-dim)}
+  .btn-ghost:hover{border-color:var(--txt-dim);color:var(--txt)}
+
+  .tabbar{
+    position:fixed;left:50%;transform:translateX(-50%);bottom:0;z-index:10;
+    width:100%;max-width:460px;
+    display:flex;justify-content:space-around;
+    background:#181512;border-top:1px solid var(--line);padding:13px 8px 17px;
+  }
+  .tab{display:flex;flex-direction:column;align-items:center;gap:5px;font-size:9.5px;color:var(--txt-faint);letter-spacing:2px}
+  .tab i{font-style:normal;font-size:15px}
+  .tab.on{color:var(--lamp-hi)}
+
+  .spec{margin-top:38px;font-size:11px;color:var(--txt-dim);line-height:2.2;border-top:1px solid var(--line);padding-top:16px;letter-spacing:1px}
+  .spec b{color:var(--txt)}
+  .swatches{display:flex;gap:8px;margin-top:8px}
+  .sw{width:26px;height:26px;border-radius:4px;border:1px solid var(--line)}
+</style>
+</head>
+<body>
+<div class="lampglow"></div><div class="grain"></div>
+
+<div class="wrap">
+  <header class="topbar">
+    <div class="logo">星<i>·</i>图</div>
+    <div class="time">22:47 PM</div>
+  </header>
+
+  <section class="hero">
+    <svg class="lamp-icn" viewBox="0 0 52 52" fill="none">
+      <path d="M16 8 L36 8 L42 26 L10 26 Z" fill="#e8b76a" opacity=".9"/>
+      <path d="M16 8 L36 8 L42 26 L10 26 Z" stroke="#f5d9a8" stroke-width="1.5"/>
+      <line x1="26" y1="26" x2="26" y2="42" stroke="#6e6355" stroke-width="2"/>
+      <line x1="18" y1="46" x2="34" y2="46" stroke="#6e6355" stroke-width="2.5" stroke-linecap="round"/>
+      <circle cx="26" cy="20" r="2.5" fill="#fff5e0"/>
+    </svg>
+    <h1>晚上好，阿澄。<br>灯还亮着。<br><em>不必着急，慢慢写</em>。</h1>
+    <p>星图上有 23 颗星，今晚都很安静。「工作的意义」最近常亮着，等你有空的时候，去看看它就好。</p>
+    <div class="date">十月廿四 · 记录第 18 天 · 夜</div>
+  </section>
+
+  <section class="entries">
+    <div class="card entry">
+      <span class="no">01</span>
+      <span class="glyph">✎</span>
+      <div><h3>记录星图</h3><p>把今天理清楚<br>聊几句，或直接填</p></div>
+    </div>
+    <div class="card entry">
+      <span class="no">02</span>
+      <span class="glyph">☾</span>
+      <div><h3>和小星聊聊</h3><p>它今晚也在<br>测验 · 树洞 · 闲坐</p></div>
+    </div>
+  </section>
+
+  <section class="card mood">
+    <div class="candle"></div>
+    <div>
+      <div class="tag">今日心情色 · 灯下琥珀</div>
+      <h3>疲惫，但不冷</h3>
+      <p>今天三次说到「累」。讲起猫的那一段，屋子暖了一点。</p>
+    </div>
+  </section>
+
+  <div class="sec"><h2>内心星图</h2><div class="line"></div><span>近 7 天</span></div>
+  <section class="card sky">
+    <svg viewBox="0 0 360 185">
+      <!-- 安静星野 -->
+      <g fill="#3d362b">
+        <circle cx="30" cy="30" r="1"/><circle cx="330" cy="44" r="1.2"/><circle cx="300" cy="160" r="1"/>
+        <circle cx="52" cy="150" r="1"/><circle cx="200" cy="24" r="1"/><circle cx="120" cy="20" r=".8"/>
+        <circle cx="262" cy="26" r=".8"/><circle cx="24" cy="96" r="1"/><circle cx="336" cy="110" r=".9"/>
+      </g>
+      <!-- 连线 -->
+      <g stroke="#4a4133" stroke-width="1">
+        <line x1="88" y1="54" x2="150" y2="92"/><line x1="150" y1="92" x2="232" y2="62"/>
+        <line x1="232" y1="62" x2="282" y2="110"/><line x1="150" y1="92" x2="118" y2="138"/>
+        <line x1="118" y1="138" x2="200" y2="130"/><line x1="200" y1="130" x2="282" y2="110"/>
+      </g>
+      <!-- 暖光星点 -->
+      <g>
+        <circle cx="88" cy="54" r="3" fill="#c9a86a"/><circle cx="88" cy="54" r="7" fill="#c9a86a" opacity=".14"/>
+        <circle cx="150" cy="92" r="5" fill="#e8b76a"/><circle cx="150" cy="92" r="12" fill="#e8b76a" opacity=".18"/>
+        <circle cx="232" cy="62" r="3.6" fill="#d9927a"/><circle cx="232" cy="62" r="8.5" fill="#d9927a" opacity=".15"/>
+        <circle cx="282" cy="110" r="2.6" fill="#9aa88c"/><circle cx="282" cy="110" r="6" fill="#9aa88c" opacity=".14"/>
+        <circle cx="118" cy="138" r="2.8" fill="#8c9ab0"/><circle cx="118" cy="138" r="6.5" fill="#8c9ab0" opacity=".14"/>
+        <circle cx="200" cy="130" r="3.2" fill="#c9a86a"/><circle cx="200" cy="130" r="7.5" fill="#c9a86a" opacity=".15"/>
+      </g>
+      <g fill="#8d8168" font-size="9" text-anchor="middle" letter-spacing="2">
+        <text x="88" y="40">新项目</text><text x="150" y="118">工作的意义</text>
+        <text x="232" y="48">和妈妈通话</text><text x="282" y="130">健身</text>
+        <text x="118" y="158">睡眠</text><text x="200" y="152">猫</text>
+      </g>
+      <!-- 月 -->
+      <circle cx="322" cy="28" r="10" fill="#e6ded0" opacity=".85"/>
+      <circle cx="318" cy="25" r="9" fill="#181512" opacity=".9"/>
+    </svg>
+    <div class="chips">
+      <span class="chip">十八</span><span class="chip">十九</span><span class="chip">二十</span>
+      <span class="chip on">廿一</span><span class="chip">廿二</span>
+    </div>
+  </section>
+
+  <div class="sec"><h2>今日报告</h2><div class="line"></div><span>叙事</span></div>
+  <section class="card report">
+    <blockquote>「忙了一整天，回头一看好像什么都没留下。但撸猫那十分钟，是真的放松。」</blockquote>
+    <div class="src">—— 你今天的原话 · 已留痕</div>
+    <p class="body">「什么都没留下」的感觉，这个月第三次来。它总在你一直付出、没人鼓掌的日子出现。今晚不用想通什么，也不用改进什么。坐着就好。</p>
+    <div class="actions">
+      <div class="btn btn-primary">读完整报告</div>
+      <div class="btn btn-ghost">说得对</div>
+      <div class="btn btn-ghost">不太对</div>
+    </div>
+  </section>
+
+  <div class="spec">
+    <b>风格 12 · 静夜书房（Quiet Study）</b><br>
+    气质：深夜台灯 + 纸墨暖棕 + 大段留白，全系列最「静」的一版。适合把产品做成「深夜独处时的那张书桌」。<br>
+    配色：#1c1917 夜 / #e8b76a 灯光 / #c07b54 锈红 / #9aa88c 灰绿<br>
+    特征：衬线字体、字距拉宽、细线分割、微弱呼吸光、零高饱和色
+    <div class="swatches">
+      <span class="sw" style="background:#1c1917"></span><span class="sw" style="background:#2a251d"></span>
+      <span class="sw" style="background:#e8b76a"></span><span class="sw" style="background:#c07b54"></span>
+      <span class="sw" style="background:#9aa88c"></span><span class="sw" style="background:#e6ded0"></span>
+    </div>
+  </div>
+</div>
+
+<nav class="tabbar">
+  <div class="tab on"><i>⌂</i>首页</div>
+  <div class="tab"><i>✦</i>星图</div>
+  <div class="tab"><i>▤</i>报告</div>
+  <div class="tab"><i>☾</i>小星</div>
+  <div class="tab"><i>○</i>我的</div>
+</nav>
+</body>
+</html>

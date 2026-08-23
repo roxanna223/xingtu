@@ -178,35 +178,33 @@ export default function StarMapPage() {
       )}
 
       <div className="star-wrap">
-        <svg className="star-svg" viewBox={`0 0 ${W} ${H}`}>
-          <defs>
-            <radialGradient id="bgGrad" cx="50%" cy="35%" r="75%">
-              <stop offset="0%" stopColor="#0d1226" />
-              <stop offset="100%" stopColor="#05070f" />
-            </radialGradient>
-          </defs>
-          <rect width={W} height={H} fill="url(#bgGrad)" />
+        <svg className="star-svg" viewBox={`0 0 ${W} ${H}`} shapeRendering="crispEdges">
+          <rect width={W} height={H} fill="#0e1130" />
 
-          {Array.from({ length: 90 }).map((_, i) => {
+          {/* 像素星尘 */}
+          {Array.from({ length: 110 }).map((_, i) => {
             const r = rng(i)
+            const s = r() > 0.8 ? 4 : 2.5
             return (
-              <circle
+              <rect
                 key={`bg${i}`}
-                cx={r() * W}
-                cy={r() * H}
-                r={r() * 1.2 + 0.3}
-                fill="#aab4d0"
+                x={r() * W}
+                y={r() * H}
+                width={s}
+                height={s}
+                fill={r() > 0.75 ? '#ffd34d' : '#aab4d0'}
                 opacity={r() * 0.5 + 0.1}
               />
             )
           })}
 
+          {/* 领域分区：虚线像素环 */}
           {DOMAINS.map((d) => {
             const p = layout.domainPos[d]
             return (
               <g key={d}>
-                <circle cx={p.x} cy={p.y} r={ZONE_SIZE} fill="none" stroke="rgba(255,255,255,0.10)" strokeDasharray="4 8" />
-                <text x={p.x} y={p.y - ZONE_SIZE - 10} textAnchor="middle" fill="rgba(232,234,242,0.55)" fontSize="15" letterSpacing="4">
+                <circle cx={p.x} cy={p.y} r={ZONE_SIZE} fill="none" stroke="#3a4080" strokeWidth="2.5" strokeDasharray="3 9" />
+                <text x={p.x} y={p.y - ZONE_SIZE - 12} textAnchor="middle" fill="#5a6098" fontSize="14" letterSpacing="4">
                   {d}
                 </text>
               </g>
@@ -214,7 +212,7 @@ export default function StarMapPage() {
           })}
 
           {/* 黄道星座环：用户的星座是星图起点 */}
-          <circle cx={CX} cy={CY} r={ZODIAC_R} fill="none" stroke="rgba(255,255,255,0.07)" strokeDasharray="2 6" />
+          <circle cx={CX} cy={CY} r={ZODIAC_R} fill="none" stroke="#4a5088" strokeWidth="2" strokeDasharray="2 8" />
           {ZODIAC.map((s, i) => {
             const a = ((i * 30 - 90) * Math.PI) / 180
             const x = CX + ZODIAC_R * Math.cos(a)
@@ -222,48 +220,66 @@ export default function StarMapPage() {
             const isMine = data.user?.starSymbol && s.includes(data.user.starSymbol)
             return (
               <g key={s}>
-                {isMine && <circle cx={x} cy={y} r={20} fill="none" stroke="#f5c76a" strokeWidth={1} opacity={0.6} />}
-                {isMine && <line x1={CX} y1={CY} x2={x} y2={y} stroke="#f5c76a" strokeWidth={1} strokeDasharray="3 5" opacity={0.35} />}
+                {isMine && <rect x={x - 22} y={y - 22} width={44} height={44} fill="none" stroke="#ffd34d" strokeWidth={2.5} />}
+                {isMine && (
+                  <path d={`M ${CX} ${CY} H ${x} V ${y}`} fill="none" stroke="#ffd34d" strokeWidth={2} strokeDasharray="4 6" opacity={0.4} />
+                )}
                 <text
                   x={x}
                   y={y}
                   textAnchor="middle"
                   dominantBaseline="central"
-                  fontSize={isMine ? 26 : 18}
-                  fill={isMine ? '#f5c76a' : 'rgba(232,234,242,0.30)'}
+                  fontSize={isMine ? 26 : 17}
+                  fill={isMine ? '#ffd34d' : '#4a5088'}
                 >
                   {s.replace(/[♈♉♊♋♌♍♎♏♐♑♒♓]/, '') === s ? s : s.slice(2)}
                 </text>
+                {isMine && (
+                  <text x={x} y={y - 32} textAnchor="middle" fontSize={11} fill="#ffd34d" fontWeight="bold" letterSpacing="2">
+                    起点
+                  </text>
+                )}
               </g>
             )
           })}
 
           {/* 中心：你 */}
-          <circle cx={CX} cy={CY} r={24} fill="none" stroke="rgba(245,199,106,0.35)" />
-          <text x={CX} y={CY} textAnchor="middle" dominantBaseline="central" fontSize={22} fill="#f5c76a">
+          <rect x={CX - 26} y={CY - 26} width={52} height={52} fill="none" stroke="#ffd34d" strokeWidth={2.5} opacity={0.55} />
+          <text x={CX} y={CY} textAnchor="middle" dominantBaseline="central" fontSize={22} fill="#ffd34d">
             {data.user?.starSymbol || '✦'}
           </text>
-          <text x={CX} y={CY + 44} textAnchor="middle" fontSize={12} fill="rgba(232,234,242,0.5)">
+          <text x={CX} y={CY + 46} textAnchor="middle" fontSize={12} fill="#9aa0d0" letterSpacing="2">
             {data.user?.starSign ? `你 · ${data.user.starSign}座` : '你在星海某处'}
           </text>
 
+          {/* 主题连线：90° 像素折线 */}
           {layout.edges.map((e, i) => (
-            <line
+            <path
               key={`e${i}`}
-              x1={e.from.x} y1={e.from.y} x2={e.to.x} y2={e.to.y}
-              stroke="rgba(255,255,255,0.35)"
-              strokeWidth={1 + (e.weight || 0.3) * 3}
-              opacity={0.12 + (e.weight || 0.3) * 0.45}
+              d={`M ${e.from.x} ${e.from.y} H ${e.to.x} V ${e.to.y}`}
+              fill="none"
+              stroke="#6bb8ff"
+              strokeWidth={2 + (e.weight || 0.3) * 2}
+              opacity={0.18 + (e.weight || 0.3) * 0.4}
             />
           ))}
 
-          {layout.nodes.map((n) => (
-            <g key={n.id} style={{ cursor: 'pointer' }} onClick={() => setSelected(n)}>
-              <circle cx={n.x} cy={n.y} r={n.size * 1.9} fill={colorFor(n.emotion)} opacity={0.22 * n.glow} />
-              <circle cx={n.x} cy={n.y} r={n.size} fill={colorFor(n.emotion)} stroke="#0a0e1a" strokeWidth={1.5} />
-              <title>{`${n.name}（${n.emotion}）`}</title>
-            </g>
-          ))}
+          {/* 心情色像素星：方块 + 内核 + 光晕 */}
+          {layout.nodes.map((n) => {
+            const c = colorFor(n.emotion)
+            const s = n.size
+            return (
+              <g key={n.id} style={{ cursor: 'pointer' }} onClick={() => setSelected(n)}>
+                <rect x={n.x - s * 1.9} y={n.y - s * 1.9} width={s * 3.8} height={s * 3.8} fill={c} opacity={0.16 * n.glow} />
+                <rect x={n.x - s} y={n.y - s} width={s * 2} height={s * 2} fill={c} stroke="#f8f4e6" strokeWidth={2} />
+                <rect x={n.x - s * 0.45} y={n.y - s * 0.45} width={s * 0.9} height={s * 0.9} fill="#12152e" opacity={0.5} />
+                <text x={n.x} y={n.y + s + 16} textAnchor="middle" fontSize={12} fill="#c9cdea" fontWeight="bold">
+                  {n.name}
+                </text>
+                <title>{`${n.name}（${n.emotion}）`}</title>
+              </g>
+            )
+          })}
         </svg>
 
         <div className="star-toolbar">

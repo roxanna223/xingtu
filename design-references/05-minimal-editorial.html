@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>风格 05 · 极简编辑 | 星图视觉参考</title>
+<style>
+  :root{
+    --bg:#faf9f5;
+    --ink:#101010;
+    --ink-60:#5c5c58;
+    --ink-30:#b3b3ac;
+    --line:#101010;
+    --accent:#2b4bff;
+    --accent-soft:#e3e8ff;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{
+    font-family:"Helvetica Neue","PingFang SC","Microsoft YaHei",Arial,sans-serif;
+    background:var(--bg);color:var(--ink);
+    min-height:100vh;
+  }
+  .wrap{max-width:480px;margin:0 auto;padding:0 22px 130px}
+
+  .topbar{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:20px 0;border-bottom:2px solid var(--line);margin-bottom:8px;
+  }
+  .logo{font-size:20px;font-weight:800;letter-spacing:8px}
+  .logo sup{font-size:9px;letter-spacing:2px;color:var(--accent);vertical-align:super}
+  .issue{font-size:10px;letter-spacing:2px;color:var(--ink-60);text-transform:uppercase}
+
+  .hero{padding:36px 0 30px;border-bottom:1px solid var(--ink-30)}
+  .hero .kicker{
+    display:inline-block;font-size:10px;font-weight:700;letter-spacing:3px;color:var(--accent);
+    border:1.5px solid var(--accent);padding:5px 12px;margin-bottom:22px;text-transform:uppercase;
+  }
+  .hero h1{
+    font-size:clamp(38px,10vw,52px);font-weight:800;line-height:1.12;letter-spacing:-1px;
+  }
+  .hero h1 .u{box-shadow:inset 0 -0.32em 0 var(--accent-soft)}
+  .hero .standfirst{
+    margin-top:20px;font-size:13.5px;line-height:1.95;color:var(--ink-60);max-width:36em;
+  }
+  .hero .byline{
+    margin-top:18px;font-size:10.5px;letter-spacing:1.5px;color:var(--ink-30);text-transform:uppercase;
+  }
+
+  .grid-label{
+    display:flex;justify-content:space-between;align-items:baseline;
+    font-size:10px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--ink-60);
+    padding:14px 0;border-bottom:2px solid var(--line);
+  }
+  .grid-label span:last-child{color:var(--ink-30);font-weight:400}
+
+  /* 入口：编辑风大列表 */
+  .entry{
+    display:grid;grid-template-columns:44px 1fr auto;gap:16px;align-items:center;
+    padding:22px 0;border-bottom:1px solid var(--ink-30);cursor:pointer;transition:.2s;
+  }
+  .entry:hover{background:var(--accent-soft);margin:0 -12px;padding-left:12px;padding-right:12px}
+  .entry .no{font-size:12px;font-weight:700;color:var(--accent);letter-spacing:1px}
+  .entry h3{font-size:22px;font-weight:800;letter-spacing:1px}
+  .entry p{font-size:11.5px;color:var(--ink-60);margin-top:5px;letter-spacing:.5px}
+  .entry .arrow{font-size:20px;font-weight:400;transition:.2s}
+  .entry:hover .arrow{transform:translateX(4px);color:var(--accent)}
+
+  /* 心情色：色票档案 */
+  .moodfile{display:grid;grid-template-columns:96px 1fr;gap:0;border:1.5px solid var(--line);margin:0 0 4px}
+  .moodfile .chip-big{
+    background:linear-gradient(160deg,#ffd9a0 0%,#e8956d 55%,#a05a8c 100%);
+    min-height:120px;position:relative;
+  }
+  .moodfile .chip-big span{
+    position:absolute;bottom:8px;left:8px;font-size:9px;color:#fff;letter-spacing:1.5px;
+    background:rgba(16,16,16,.55);padding:3px 7px;
+  }
+  .moodfile .meta{padding:16px 18px}
+  .moodfile .meta .tag{font-size:9.5px;letter-spacing:2.5px;color:var(--accent);font-weight:700;margin-bottom:8px}
+  .moodfile .meta h3{font-size:16px;font-weight:800;margin-bottom:8px;letter-spacing:.5px}
+  .moodfile .meta p{font-size:11.5px;color:var(--ink-60);line-height:1.85}
+  .moodfile .meta .hex{margin-top:10px;font-size:10px;color:var(--ink-30);letter-spacing:1px;font-family:Menlo,monospace}
+
+  /* 星图：坐标图纸 */
+  .mapframe{border:1.5px solid var(--line);padding:10px;background:#fff}
+  .mapframe svg{display:block;width:100%}
+  .mapfoot{display:flex;justify-content:space-between;gap:6px;margin-top:10px;flex-wrap:wrap}
+  .fchip{font-size:10px;letter-spacing:1px;padding:5px 10px;border:1px solid var(--ink-30);color:var(--ink-60)}
+  .fchip.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+
+  /* 报告：报纸引用 */
+  .report{border-top:2px solid var(--line);padding-top:18px}
+  .report .quote{
+    font-size:19px;font-weight:800;line-height:1.7;letter-spacing:.3px;
+    padding-left:18px;border-left:5px solid var(--accent);margin:6px 0 10px;
+  }
+  .report .src{font-size:10.5px;color:var(--ink-30);letter-spacing:1.5px;text-transform:uppercase}
+  .report .body{
+    margin-top:16px;font-size:13px;line-height:2.05;color:#2c2c28;
+    column-rule:1px solid var(--ink-30);
+  }
+  .report .body::first-letter{
+    font-size:38px;font-weight:800;float:left;line-height:.9;padding:4px 8px 0 0;color:var(--accent);
+  }
+  .actions{display:flex;gap:0;margin-top:22px;border:1.5px solid var(--line)}
+  .btn{
+    flex:1;text-align:center;font-size:11.5px;font-weight:700;letter-spacing:2.5px;
+    padding:14px 0;cursor:pointer;transition:.2s;border-right:1.5px solid var(--line);
+  }
+  .btn:last-child{border-right:none}
+  .btn-primary{background:var(--ink);color:var(--bg)}
+  .btn-primary:hover{background:var(--accent)}
+  .btn-ghost:hover{background:var(--accent-soft)}
+
+  .tabbar{
+    position:fixed;left:0;right:0;bottom:0;z-index:10;
+    background:var(--bg);border-top:2px solid var(--line);
+    display:flex;justify-content:space-around;padding:12px 10px 18px;
+  }
+  .tab{font-size:10.5px;letter-spacing:2.5px;color:var(--ink-60);font-weight:700;text-transform:uppercase}
+  .tab.on{color:var(--accent);border-bottom:2px solid var(--accent);padding-bottom:3px}
+
+  .spec{
+    margin-top:38px;font-size:11px;color:var(--ink-60);line-height:2;
+    border-top:2px solid var(--line);padding-top:16px;
+  }
+  .spec b{color:var(--ink);letter-spacing:1px}
+  .swatches{display:flex;gap:0;margin-top:10px;border:1.5px solid var(--line)}
+  .sw{flex:1;height:30px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="topbar">
+    <div class="logo">星图<sup>®</sup></div>
+    <div class="issue">Vol.18 — 阿澄</div>
+  </header>
+
+  <section class="hero">
+    <span class="kicker">Evening Edition · 晚间号</span>
+    <h1>晚上好，<br>阿澄。<br><span class="u">二十三星在册。</span></h1>
+    <p class="standfirst">「工作的意义」星系近七日活跃度上升 40%，成为本期内心星图最大变量。本刊建议：今晚留出十分钟，与它独处。</p>
+    <div class="byline">Reported by 小星 · 10月24日 · 天蝎月 · 记录第 18 天</div>
+  </section>
+
+  <div class="grid-label" style="margin-top:26px"><span>01 — 两个入口</span><span>ENTRIES</span></div>
+  <div class="entry">
+    <span class="no">A/01</span>
+    <div><h3>记录星图</h3><p>把今天理清楚 —— 聊几句，或直接填</p></div>
+    <span class="arrow">→</span>
+  </div>
+  <div class="entry" style="margin-bottom:6px">
+    <span class="no">A/02</span>
+    <div><h3>和小星聊聊</h3><p>陪伴星灵 —— 测验 · 树洞 · 碎碎念</p></div>
+    <span class="arrow">→</span>
+  </div>
+
+  <div class="grid-label" style="margin-top:30px"><span>02 — 今日心情色</span><span>MOOD SWATCH</span></div>
+  <div style="height:14px"></div>
+  <div class="moodfile">
+    <div class="chip-big"><span>PANTONE-ish</span></div>
+    <div class="meta">
+      <div class="tag">MOOD No.018</div>
+      <h3>琥珀玫瑰 · 疲惫里的温热</h3>
+      <p>今日三次提及「累」，但谈及猫时明度显著上升。</p>
+      <div class="hex">#FFD9A0 → #E8956D → #A05A8C</div>
+    </div>
+  </div>
+
+  <div class="grid-label" style="margin-top:30px"><span>03 — 内心星图 · 七日</span><span>STAR MAP</span></div>
+  <div style="height:14px"></div>
+  <div class="mapframe">
+    <svg viewBox="0 0 360 200">
+      <!-- 图纸网格 -->
+      <g stroke="#e3e1d8" stroke-width="1">
+        <line x1="0" y1="50" x2="360" y2="50"/><line x1="0" y1="100" x2="360" y2="100"/><line x1="0" y1="150" x2="360" y2="150"/>
+        <line x1="60" y1="0" x2="60" y2="200"/><line x1="120" y1="0" x2="120" y2="200"/>
+        <line x1="180" y1="0" x2="180" y2="200"/><line x1="240" y1="0" x2="240" y2="200"/><line x1="300" y1="0" x2="300" y2="200"/>
+      </g>
+      <!-- 连线 -->
+      <g stroke="#101010" stroke-width="1.2">
+        <line x1="88" y1="62" x2="150" y2="102"/><line x1="150" y1="102" x2="232" y2="72"/>
+        <line x1="232" y1="72" x2="282" y2="122"/><line x1="150" y1="102" x2="118" y2="152"/>
+        <line x1="118" y1="152" x2="200" y2="142"/><line x1="200" y1="142" x2="282" y2="122"/>
+      </g>
+      <!-- 星：方点与蓝点 -->
+      <g fill="#101010">
+        <rect x="84" y="58" width="8" height="8"/><rect x="278" y="118" width="7" height="7"/>
+        <rect x="114" y="148" width="7" height="7"/>
+      </g>
+      <g fill="#2b4bff">
+        <circle cx="150" cy="102" r="7"/><circle cx="232" cy="72" r="5.5"/><circle cx="200" cy="142" r="5"/>
+      </g>
+      <!-- 标注 -->
+      <g font-size="9" fill="#5c5c58" letter-spacing="1" font-family="Menlo,monospace">
+        <text x="88" y="48" text-anchor="middle">S-01 新项目</text>
+        <text x="150" y="126" text-anchor="middle" fill="#2b4bff" font-weight="bold">S-04 工作的意义</text>
+        <text x="232" y="56" text-anchor="middle">S-07 和妈妈通话</text>
+        <text x="282" y="142" text-anchor="middle">S-03 健身</text>
+        <text x="118" y="172" text-anchor="middle">S-02 睡眠</text>
+        <text x="200" y="164" text-anchor="middle">S-05 猫</text>
+      </g>
+      <!-- 图框角 -->
+      <g stroke="#101010" stroke-width="1.5" fill="none">
+        <path d="M4 14 V4 H14"/><path d="M346 4 H356 V14"/>
+        <path d="M356 186 V196 H346"/><path d="M14 196 H4 V186"/>
+      </g>
+    </svg>
+    <div class="mapfoot">
+      <span class="fchip">10/18</span><span class="fchip">10/19</span><span class="fchip">10/20</span>
+      <span class="fchip on">10/21</span><span class="fchip">10/22</span><span class="fchip">10/23</span>
+    </div>
+  </div>
+
+  <div class="grid-label" style="margin-top:30px"><span>04 — 今日报告 · 摘要</span><span>DAILY REPORT</span></div>
+  <div style="height:16px"></div>
+  <section class="report">
+    <div class="quote">「忙了一整天，回头一看好像什么都没留下。但撸猫那十分钟，是真的放松。」</div>
+    <div class="src">—— 受访者原话 · 已留痕存证</div>
+    <p class="body">「什么都没留下」之感，本月第三次出现，均见于连续输出而无即时反馈之日。这并非能力问题，而是节奏问题。建议今晚不做任何「有用」的事。</p>
+    <div class="actions">
+      <div class="btn btn-primary">读完整报告</div>
+      <div class="btn btn-ghost">说得对</div>
+      <div class="btn btn-ghost">不太对</div>
+    </div>
+  </section>
+
+  <div class="spec">
+    <b>风格 05 · 极简编辑（Minimal Editorial）</b><br>
+    气质：报纸排版 × 图纸美学 × 单一强调色，理性、克制、有智识感，适合强调「报告 / 留痕 / 有据可查」的产品叙事，面试作品集气质最佳。<br>
+    配色：#faf9f5 纸白 / #101010 墨黑 / #2b4bff 国际蓝（唯一强调色）<br>
+    字体：Helvetica + 特大标题 + 字距拉开的小号大写标签；0 圆角、2px 粗分割线、编号网格
+    <div class="swatches">
+      <span class="sw" style="background:#faf9f5"></span><span class="sw" style="background:#101010"></span>
+      <span class="sw" style="background:#2b4bff"></span><span class="sw" style="background:#e3e8ff"></span>
+      <span class="sw" style="background:#b3b3ac"></span>
+    </div>
+  </div>
+</div>
+
+<nav class="tabbar">
+  <div class="tab on">首页</div>
+  <div class="tab">星图</div>
+  <div class="tab">报告</div>
+  <div class="tab">小星</div>
+  <div class="tab">我的</div>
+</nav>
+</body>
+</html>

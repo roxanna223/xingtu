@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>风格 06 · 手帐拼贴 | 星图视觉参考</title>
+<link href="https://fonts.googleapis.com/css2?family=Long+Cang&family=Zhi+Mang+Xing&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --desk:#e8e0d0;
+    --paper:#fffdf6;
+    --paper2:#fdf3e0;
+    --ink:#4a4238;
+    --ink-soft:#93876f;
+    --red:#e0635c;
+    --blue:#6b9fd4;
+    --green:#8fb996;
+    --yellow:#f5c96b;
+    --pink:#f0a8b8;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{
+    font-family:"PingFang SC","Microsoft YaHei",-apple-system,sans-serif;
+    background:var(--desk);
+    background-image:radial-gradient(rgba(120,100,70,.12) 1px,transparent 1.5px);
+    background-size:18px 18px;
+    color:var(--ink);min-height:100vh;
+  }
+  .hand{font-family:"Zhi Mang Xing","Long Cang","Segoe Script",cursive}
+  .wrap{max-width:460px;margin:0 auto;padding:30px 20px 120px;position:relative}
+
+  /* 桌面涂鸦 */
+  .doodle{position:absolute;pointer-events:none;opacity:.55}
+  .d1{top:12px;right:8px;transform:rotate(12deg);font-size:22px}
+  .d2{top:300px;left:-4px;transform:rotate(-8deg);font-size:18px}
+
+  .topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:26px}
+  .logo{display:flex;align-items:center;gap:10px}
+  .logo .pin{
+    width:36px;height:36px;background:var(--red);border-radius:50% 50% 50% 4px;transform:rotate(-45deg);
+    display:flex;align-items:center;justify-content:center;box-shadow:2px 3px 0 rgba(0,0,0,.15);
+  }
+  .logo .pin span{transform:rotate(45deg);color:#fff;font-size:16px}
+  .logo .name{font-size:22px;font-weight:800;letter-spacing:3px}
+  .logo .name i{font-style:normal;color:var(--red)}
+  .avatar{
+    width:42px;height:42px;border-radius:50%;background:var(--paper2);
+    border:2px dashed var(--ink-soft);display:flex;align-items:center;justify-content:center;
+    font-size:14px;font-weight:700;transform:rotate(3deg);
+  }
+
+  /* 便签英雄区 */
+  .hero-note{
+    background:var(--paper2);padding:26px 24px 22px;position:relative;
+    box-shadow:3px 4px 0 rgba(74,66,56,.14);transform:rotate(-.8deg);margin-bottom:30px;
+    border-radius:3px;
+  }
+  .tape{
+    position:absolute;width:92px;height:26px;top:-13px;left:50%;transform:translateX(-50%) rotate(-2deg);
+    background:linear-gradient(100deg,rgba(245,201,107,.85),rgba(245,201,107,.65));
+    border-left:1px dashed rgba(255,255,255,.7);border-right:1px dashed rgba(255,255,255,.7);
+    box-shadow:0 2px 4px rgba(0,0,0,.08);
+  }
+  .tape.blue{background:linear-gradient(100deg,rgba(107,159,212,.75),rgba(107,159,212,.55))}
+  .tape.pink{background:linear-gradient(100deg,rgba(240,168,184,.8),rgba(240,168,184,.6))}
+  .tape.green{background:linear-gradient(100deg,rgba(143,185,150,.8),rgba(143,185,150,.6))}
+  .hero-note .date{font-size:11px;color:var(--ink-soft);letter-spacing:2px;margin-bottom:10px}
+  .hero-note h1{font-size:26px;line-height:1.5;font-weight:800}
+  .hero-note h1 .hl{background:linear-gradient(transparent 55%,var(--yellow) 55%)}
+  .hero-note .scribble{
+    margin-top:14px;font-size:21px;color:var(--red);transform:rotate(-1deg);display:inline-block;
+  }
+  .hero-note p{margin-top:10px;font-size:13px;color:var(--ink-soft);line-height:1.9}
+
+  /* 拍立得入口 */
+  .entries{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:30px}
+  .polaroid{
+    background:var(--paper);padding:12px 12px 16px;cursor:pointer;position:relative;
+    box-shadow:2px 4px 0 rgba(74,66,56,.14);transition:.25s cubic-bezier(.2,.8,.2,1);
+  }
+  .polaroid:hover{transform:rotate(0deg) translateY(-5px) scale(1.03)!important;box-shadow:4px 8px 0 rgba(74,66,56,.2);z-index:2}
+  .pl1{transform:rotate(-2deg)}
+  .pl2{transform:rotate(1.6deg)}
+  .polaroid .photo{
+    height:86px;display:flex;align-items:center;justify-content:center;font-size:34px;margin-bottom:12px;
+  }
+  .pl1 .photo{background:linear-gradient(135deg,#cfe3f5,#a9cbe8)}
+  .pl2 .photo{background:linear-gradient(135deg,#fbe3e6,#f4c3cd)}
+  .polaroid h3{font-size:16px;font-weight:800;text-align:center}
+  .polaroid p{font-size:10.5px;color:var(--ink-soft);text-align:center;margin-top:4px;line-height:1.6}
+  .polaroid .corner-tape{position:absolute;top:-10px;right:-14px;width:56px;height:20px;transform:rotate(38deg)}
+
+  /* 心情色：色卡便签 */
+  .mood{
+    background:var(--paper);padding:20px 22px;position:relative;transform:rotate(.6deg);
+    box-shadow:2px 4px 0 rgba(74,66,56,.14);margin-bottom:30px;
+  }
+  .mood .head{display:flex;align-items:center;gap:14px}
+  .swatch-stack{position:relative;width:64px;height:64px;flex:none}
+  .swatch-stack i{position:absolute;border-radius:8px;box-shadow:1px 2px 0 rgba(0,0,0,.12)}
+  .swatch-stack .s1{inset:0;background:var(--yellow);transform:rotate(-6deg)}
+  .swatch-stack .s2{inset:6px 0 -4px 8px;background:var(--pink);transform:rotate(4deg)}
+  .mood .tag{font-size:10.5px;letter-spacing:2px;color:var(--red);font-weight:700;margin-bottom:5px}
+  .mood h3{font-size:16.5px;font-weight:800}
+  .mood .handnote{
+    margin-top:14px;padding-top:12px;border-top:1.5px dashed #d8cdb4;
+    font-size:19px;color:#6b5d49;line-height:1.7;
+  }
+  .mood .handnote b{color:var(--red);font-weight:400}
+
+  .section-title{display:flex;align-items:center;gap:10px;margin:0 2px 16px}
+  .section-title h2{font-size:15px;font-weight:800;letter-spacing:2px}
+  .section-title .squig{flex:1}
+  .section-title span{font-size:10.5px;color:var(--ink-soft)}
+
+  /* 星图：软木板钉照片 */
+  .cork{
+    background:#d9c4a3;border-radius:6px;padding:18px 12px 14px;position:relative;
+    box-shadow:inset 0 0 0 6px #c8b08a, 3px 5px 0 rgba(74,66,56,.18);margin-bottom:30px;
+  }
+  .cork svg{width:100%;display:block}
+  .chips{display:flex;gap:8px;justify-content:center;margin-top:12px;flex-wrap:wrap}
+  .chip{
+    font-size:10.5px;background:var(--paper);padding:5px 12px;box-shadow:1px 2px 0 rgba(74,66,56,.18);
+    transform:rotate(-1deg);
+  }
+  .chip:nth-child(even){transform:rotate(1.2deg)}
+  .chip.on{background:var(--red);color:#fff;font-weight:700}
+
+  /* 报告：横格信纸 */
+  .letter{
+    background:repeating-linear-gradient(var(--paper) 0 30px,#dce8f5 30px 31px);
+    padding:24px 24px 22px;position:relative;transform:rotate(-.5deg);
+    box-shadow:3px 4px 0 rgba(74,66,56,.14);margin-bottom:16px;
+  }
+  .letter::before{
+    content:"";position:absolute;top:0;bottom:0;left:38px;width:1.5px;background:rgba(224,99,92,.4);
+  }
+  .letter .inner{padding-left:28px}
+  .letter blockquote{font-size:14.5px;line-height:31px;font-weight:600}
+  .letter .src{font-size:11px;color:var(--ink-soft);text-align:right;margin-top:8px}
+  .letter .body{font-size:13px;line-height:31px;color:#5d5344;margin-top:10px}
+  .letter .margin-note{
+    position:absolute;left:2px;top:96px;width:34px;font-size:15px;color:var(--blue);
+    transform:rotate(-90deg);transform-origin:center;white-space:nowrap;
+  }
+  .stamp{
+    position:absolute;top:14px;right:14px;width:52px;height:52px;border:2px dashed var(--red);
+    border-radius:50%;display:flex;align-items:center;justify-content:center;text-align:center;
+    font-size:10px;color:var(--red);font-weight:800;transform:rotate(12deg);line-height:1.4;opacity:.8;
+  }
+  .actions{display:flex;gap:12px;margin-top:20px}
+  .btn{
+    flex:1;text-align:center;font-size:12.5px;font-weight:800;letter-spacing:1.5px;
+    padding:12px 0;cursor:pointer;transition:.2s;box-shadow:2px 3px 0 rgba(74,66,56,.2);
+  }
+  .btn:active{transform:translate(1px,2px);box-shadow:1px 1px 0 rgba(74,66,56,.2)}
+  .btn-primary{background:var(--ink);color:var(--paper)}
+  .btn-ghost{background:var(--paper);border:1.5px solid var(--ink-soft);color:var(--ink-soft)}
+
+  .tabbar{
+    position:fixed;left:50%;transform:translateX(-50%);bottom:14px;z-index:10;
+    width:min(430px,calc(100% - 32px));
+    display:flex;justify-content:space-around;
+    background:var(--paper);border-radius:6px;
+    box-shadow:3px 5px 0 rgba(74,66,56,.22);padding:12px 8px;
+    border:1.5px solid rgba(74,66,56,.2);
+  }
+  .tab{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10px;color:var(--ink-soft);font-weight:700}
+  .tab i{font-style:normal;font-size:18px}
+  .tab.on{color:var(--red)}
+
+  .spec{margin-top:36px;font-size:11px;color:var(--ink-soft);line-height:2;border-top:2px dashed #c8bda6;padding-top:16px}
+  .spec b{color:var(--ink)}
+  .swatches{display:flex;gap:8px;margin-top:8px}
+  .sw{width:26px;height:26px;border-radius:6px;box-shadow:1px 2px 0 rgba(0,0,0,.12)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <span class="doodle d1">✿</span>
+  <span class="doodle d2">☆</span>
+
+  <header class="topbar">
+    <div class="logo">
+      <div class="pin"><span>★</span></div>
+      <div class="name">星<i>图</i></div>
+    </div>
+    <div class="avatar">澄</div>
+  </header>
+
+  <!-- 便签英雄区 -->
+  <section class="hero-note">
+    <div class="tape"></div>
+    <div class="date">10月24日 星期四 · 记录第 18 天 · 天气 ☁️</div>
+    <h1>晚上好，阿澄。<br>今天也<span class="hl">努力地活到了现在</span>，了不起。</h1>
+    <p>星图上已经贴了 23 颗星星。「工作的意义」那张便签最近被翻得好旧，要不要把它取下来看看？</p>
+    <span class="hand scribble">—— 小星 留 ✎</span>
+  </section>
+
+  <!-- 拍立得入口 -->
+  <section class="entries">
+    <div class="polaroid pl1">
+      <div class="tape blue corner-tape"></div>
+      <div class="photo">🖋️</div>
+      <h3>记录星图</h3>
+      <p>把今天理清楚<br>聊几句 or 直接填</p>
+    </div>
+    <div class="polaroid pl2">
+      <div class="tape pink corner-tape"></div>
+      <div class="photo">🧸</div>
+      <h3>和小星聊聊</h3>
+      <p>你的陪伴星灵<br>测验 · 树洞 · 碎碎念</p>
+    </div>
+  </section>
+
+  <!-- 心情色卡 -->
+  <section class="mood">
+    <div class="tape green" style="top:-12px;left:24px;transform:rotate(-4deg)"></div>
+    <div class="head">
+      <div class="swatch-stack"><i class="s1"></i><i class="s2"></i></div>
+      <div>
+        <div class="tag">今日心情色 · 蜜桃乌龙</div>
+        <h3>累，但心里有点甜</h3>
+      </div>
+    </div>
+    <div class="handnote hand">
+      今天说了三次「累」…… 不过讲到猫的时候，<b>字都变轻快了</b>呢。
+    </div>
+  </section>
+
+  <div class="section-title">
+    <h2>内心星图</h2>
+    <svg class="squig" height="8" viewBox="0 0 200 8" preserveAspectRatio="none">
+      <path d="M0 4 Q 12 0 25 4 T 50 4 T 75 4 T 100 4 T 125 4 T 150 4 T 175 4 T 200 4" fill="none" stroke="#b3a88d" stroke-width="2"/>
+    </svg>
+    <span>近 7 天</span>
+  </div>
+
+  <!-- 软木星图 -->
+  <section class="cork">
+    <svg viewBox="0 0 360 190">
+      <!-- 毛线连线 -->
+      <g stroke="#a5875e" stroke-width="2" stroke-dasharray="1 5" stroke-linecap="round">
+        <line x1="88" y1="58" x2="150" y2="96"/><line x1="150" y1="96" x2="232" y2="66"/>
+        <line x1="232" y1="66" x2="282" y2="114"/><line x1="150" y1="96" x2="118" y2="142"/>
+        <line x1="118" y1="142" x2="200" y2="134"/><line x1="200" y1="134" x2="282" y2="114"/>
+      </g>
+      <!-- 大头钉 + 便签星 -->
+      <g>
+        <rect x="74" y="46" width="28" height="24" fill="#f5c96b" transform="rotate(-6 88 58)"/>
+        <rect x="132" y="82" width="36" height="30" fill="#f0a8b8" transform="rotate(3 150 96)"/>
+        <rect x="217" y="54" width="30" height="25" fill="#a9cbe8" transform="rotate(-4 232 66)"/>
+        <rect x="270" y="103" width="24" height="20" fill="#8fb996" transform="rotate(5 282 114)"/>
+        <rect x="105" y="132" width="26" height="22" fill="#fdf3e0" transform="rotate(-3 118 142)"/>
+        <rect x="186" y="123" width="28" height="23" fill="#f5c96b" transform="rotate(4 200 134)"/>
+      </g>
+      <!-- 钉头 -->
+      <g fill="#e0635c">
+        <circle cx="88" cy="52" r="4"/><circle cx="150" cy="88" r="4.5"/><circle cx="232" cy="60" r="4"/>
+        <circle cx="282" cy="108" r="3.5"/><circle cx="118" cy="137" r="3.5"/><circle cx="200" cy="128" r="4"/>
+      </g>
+      <g fill="#fff" opacity=".6">
+        <circle cx="86.5" cy="50.5" r="1.2"/><circle cx="148.5" cy="86.5" r="1.4"/><circle cx="230.5" cy="58.5" r="1.2"/>
+      </g>
+      <g fill="#6b5d49" font-size="9" text-anchor="middle" font-weight="700">
+        <text x="88" y="84">新项目</text><text x="150" y="126">工作的意义</text>
+        <text x="232" y="92">和妈妈通话</text><text x="282" y="136">健身</text>
+        <text x="118" y="166">睡眠</text><text x="200" y="158">猫</text>
+      </g>
+      <!-- 角落涂鸦 -->
+      <text x="316" y="30" font-size="16" transform="rotate(10 322 26)">✿</text>
+      <text x="30" y="170" font-size="13" transform="rotate(-8 34 168)" fill="#a5875e">☆</text>
+    </svg>
+    <div class="chips">
+      <span class="chip">10/18</span><span class="chip">10/19</span><span class="chip">10/20</span>
+      <span class="chip on">10/21</span><span class="chip">10/22</span><span class="chip">10/23</span>
+    </div>
+  </section>
+
+  <div class="section-title">
+    <h2>今日报告</h2>
+    <svg class="squig" height="8" viewBox="0 0 200 8" preserveAspectRatio="none">
+      <path d="M0 4 Q 12 0 25 4 T 50 4 T 75 4 T 100 4 T 125 4 T 150 4 T 175 4 T 200 4" fill="none" stroke="#b3a88d" stroke-width="2"/>
+    </svg>
+    <span>叙事版</span>
+  </div>
+
+  <!-- 信纸报告 -->
+  <section class="letter">
+    <div class="stamp">已读<br>留痕</div>
+    <div class="margin-note hand">写给你的 ↷</div>
+    <div class="inner">
+      <blockquote>「忙了一整天，回头一看好像什么都没留下。但撸猫那十分钟，是真的放松。」</blockquote>
+      <div class="src">—— 你今天的原话</div>
+      <p class="body">「什么都没留下」的感觉，这个月第三次来了。它总挑你一直付出、没人鼓掌的日子上门。今晚早点睡，明天我给你留颗糖。🍬</p>
+      <div class="actions">
+        <div class="btn btn-primary">读完整报告</div>
+        <div class="btn btn-ghost">说得对</div>
+        <div class="btn btn-ghost">不太对</div>
+      </div>
+    </div>
+  </section>
+
+  <div class="spec">
+    <b>风格 06 · 手帐拼贴（Scrapbook）</b><br>
+    气质：软木桌 + 和纸胶带 + 拍立得 + 横格信纸，「活人感」最强——所有元素都像被人手摸过。最契合记录/陪伴场景。<br>
+    配色：#e8e0d0 桌面 / #e0635c 红 / #f5c96b 便签黄 / #6b9fd4 胶带蓝<br>
+    特征：随机旋转 ±2°、硬投影代替弥散影、手写字批注、虚线撕边
+    <div class="swatches">
+      <span class="sw" style="background:#e8e0d0"></span><span class="sw" style="background:#fffdf6"></span>
+      <span class="sw" style="background:#e0635c"></span><span class="sw" style="background:#f5c96b"></span>
+      <span class="sw" style="background:#6b9fd4"></span><span class="sw" style="background:#8fb996"></span>
+    </div>
+  </div>
+</div>
+
+<nav class="tabbar">
+  <div class="tab on"><i>🏠</i>首页</div>
+  <div class="tab"><i>⭐</i>星图</div>
+  <div class="tab"><i>📖</i>报告</div>
+  <div class="tab"><i>💬</i>小星</div>
+  <div class="tab"><i>☺</i>我的</div>
+</nav>
+</body>
+</html>

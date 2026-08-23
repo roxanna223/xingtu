@@ -303,7 +303,7 @@ export default function RecordPage() {
           {saved ? (
             <div className="empty-state">
               今天的星图已保存 ✅<br />
-              <Link href="/report" className="muted" style={{ fontSize: 15, color: '#f5c76a' }}>立即查看今日报告 →</Link>
+              <Link href="/report" className="muted" style={{ fontSize: 15, color: 'var(--yellow)' }}>立即查看今日报告 →</Link>
               <br />
               <Link href="/star-map" className="muted">去看看星图 →</Link>
               <br /><br />

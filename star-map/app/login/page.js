@@ -64,16 +64,15 @@ export default function LoginPage() {
 
   return (
     <div className="login-wrap">
-      <div className="login-stars" />
-
-      <div className="page login-page">
+      <div className="page login-page" style={{ maxWidth: 480 }}>
         <div className="login-hero">
-          <div className="login-symbol">{sign ? sign.symbol : '✶'}</div>
+          <div className="flag">STAR MAP · v0.1</div>
           <h1>星图</h1>
-          <p className="muted">看见自己，才能指路。</p>
+          <p className="muted">长期对话 · 内心星图 · 状态导航</p>
         </div>
 
         <div className="card login-card">
+          <div className="sec-title" style={{ marginTop: 0 }}>— PLAYER LOGIN —</div>
           <div className="login-tabs">
             <button type="button" className={mode === 'register' ? 'login-tab on' : 'login-tab'} onClick={() => { setMode('register'); setError('') }}>
               注册
@@ -85,8 +84,8 @@ export default function LoginPage() {
 
           <form onSubmit={submit}>
             <div className="field">
-              <label>用户名</label>
-              <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} placeholder="给自己起个名字" autoFocus required />
+              <label>昵称</label>
+              <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} placeholder="怎么称呼你？" autoFocus required />
             </div>
             <div className="field">
               <label>密码</label>
@@ -96,10 +95,10 @@ export default function LoginPage() {
             {mode === 'register' && (
               <div className="field">
                 <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
-                  <label style={{ marginBottom: 0 }}>出生日期（选填）</label>
+                  <label style={{ marginBottom: 0 }}>出生日期 · 决定星座起点（选填）</label>
                   {wheelOpen ? (
                     <button type="button" className="login-skip" onClick={() => { setWheelOpen(false); setBirthDate('') }}>
-                      先不填，从星海开始
+                      先不填，从星海某处开始
                     </button>
                   ) : (
                     <button type="button" className="login-skip" onClick={() => setWheelOpen(true)}>
@@ -115,12 +114,12 @@ export default function LoginPage() {
                       <div className="sign-preview">
                         <span className="sign-preview-symbol">{sign.symbol}</span>
                         <div>
-                          <div style={{ color: '#f5c76a', fontWeight: 600 }}>{sign.name}座</div>
-                          <div className="muted" style={{ fontSize: 12 }}>星图会从这里开始</div>
+                          <div style={{ color: 'var(--yellow)', fontWeight: 800, letterSpacing: 2 }}>{sign.name}座</div>
+                          <div className="muted" style={{ fontSize: 11 }}>你的星图将从这里开始</div>
                         </div>
                       </div>
                     ) : (
-                      <p className="muted" style={{ margin: '10px 0 0', fontSize: 12, textAlign: 'center' }}>
+                      <p className="muted" style={{ margin: '10px 0 0', fontSize: 11, textAlign: 'center' }}>
                         上下滑动选择年月日，你的星座会自动出现
                       </p>
                     )}
@@ -129,13 +128,18 @@ export default function LoginPage() {
               </div>
             )}
 
-            {error && <p style={{ color: '#ffb3b3', fontSize: 13 }}>{error}</p>}
+            {error && <p style={{ color: 'var(--red)', fontSize: 12, letterSpacing: 1 }}>⚠ {error}</p>}
 
-            <button className="btn btn-primary" style={{ width: '100%', marginTop: 6 }} disabled={busy}>
-              {busy ? '正在进入…' : mode === 'register' ? '注册并进入星图' : '登录'}
+            <button className="btn btn-primary btn-block" style={{ marginTop: 8 }} disabled={busy}>
+              {busy ? '正在进入…' : mode === 'register' ? '▶ 注册并进入星图' : '▶ 登录'}
             </button>
           </form>
         </div>
+
+        <p className="muted" style={{ textAlign: 'center', marginTop: 24, fontSize: 11, lineHeight: 2.1 }}>
+          换账号登录将重置全部画像数据<br />
+          未配置 API Key 时自动使用 Mock 引擎，整条链路仍可跑通
+        </p>
       </div>
     </div>
   )

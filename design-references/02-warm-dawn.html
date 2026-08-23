@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>风格 02 · 晨光治愈 | 星图视觉参考</title>
+<style>
+  :root{
+    --cream:#faf4ea;
+    --paper:#fffdf8;
+    --ink:#3d3428;
+    --ink-soft:#8a7d6b;
+    --terra:#e07a5f;
+    --terra-deep:#c75b3f;
+    --sage:#9caf88;
+    --honey:#f2b880;
+    --rose:#e8a2a2;
+    --radius:26px;
+    --shadow:0 10px 34px -12px rgba(120,90,50,.22);
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{
+    font-family:"PingFang SC","Microsoft YaHei",-apple-system,sans-serif;
+    background:var(--cream);
+    color:var(--ink);
+    min-height:100vh;
+    position:relative;
+    overflow-x:hidden;
+  }
+  /* 背景晨光 */
+  .sun{
+    position:fixed;top:-180px;right:-140px;width:480px;height:480px;border-radius:50%;
+    background:radial-gradient(circle,#ffe3b3 0%,#ffd29b 32%,rgba(255,210,155,0) 68%);
+    opacity:.85;pointer-events:none;z-index:0;
+  }
+  .blob{
+    position:fixed;border-radius:50%;filter:blur(70px);pointer-events:none;z-index:0;opacity:.5;
+  }
+  .b1{width:340px;height:340px;background:#ffd9c4;bottom:-120px;left:-120px}
+  .b2{width:260px;height:260px;background:#d9e4c8;top:38%;left:-140px}
+
+  .wrap{position:relative;z-index:1;max-width:460px;margin:0 auto;padding:28px 22px 120px}
+
+  .topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:32px}
+  .logo{display:flex;align-items:center;gap:9px;font-size:19px;font-weight:700;letter-spacing:4px}
+  .logo .mark{
+    width:32px;height:32px;border-radius:12px;background:linear-gradient(135deg,var(--honey),var(--terra));
+    display:flex;align-items:center;justify-content:center;color:#fff;font-size:15px;
+    box-shadow:0 6px 16px -4px rgba(224,122,95,.55);
+  }
+  .avatar{
+    width:40px;height:40px;border-radius:50%;background:#f3e2cd;border:2px solid #fff;
+    display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:var(--terra-deep);
+    box-shadow:var(--shadow);
+  }
+
+  .hero{margin-bottom:30px}
+  .hero .date{
+    display:inline-block;font-size:11.5px;color:var(--terra-deep);background:#fdeee4;
+    padding:5px 14px;border-radius:999px;letter-spacing:1.5px;margin-bottom:14px;font-weight:600;
+  }
+  .hero h1{font-size:29px;line-height:1.45;font-weight:700;letter-spacing:.5px}
+  .hero h1 em{font-style:normal;color:var(--terra);position:relative}
+  .hero h1 em::after{
+    content:"";position:absolute;left:0;right:0;bottom:3px;height:9px;background:#ffe1c2;z-index:-1;border-radius:4px;
+  }
+  .hero p{margin-top:12px;font-size:13.5px;color:var(--ink-soft);line-height:1.9}
+
+  .card{
+    background:var(--paper);border-radius:var(--radius);box-shadow:var(--shadow);
+    padding:22px;position:relative;border:1px solid rgba(190,160,120,.14);
+  }
+
+  .entries{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:24px}
+  .entry{min-height:158px;display:flex;flex-direction:column;justify-content:space-between;cursor:pointer;transition:.3s cubic-bezier(.2,.8,.2,1)}
+  .entry:hover{transform:translateY(-5px) rotate(-.5deg);box-shadow:0 18px 40px -14px rgba(120,90,50,.32)}
+  .entry .icon{
+    width:46px;height:46px;border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:21px;
+  }
+  .e1 .icon{background:#fdeee4}
+  .e2 .icon{background:#eef3e4}
+  .entry h3{font-size:16.5px;font-weight:700;margin:14px 0 5px}
+  .entry p{font-size:11.5px;color:var(--ink-soft);line-height:1.75}
+  .entry .arrow{position:absolute;top:20px;right:20px;color:#d8c9b4;font-size:15px;transition:.3s}
+  .entry:hover .arrow{color:var(--terra);transform:translateX(3px)}
+
+  .mood{display:flex;gap:18px;align-items:center;margin-bottom:24px;background:linear-gradient(120deg,#fff6e8,#fdeee4)}
+  .mood .egg{
+    flex:none;width:72px;height:72px;border-radius:50% 50% 50% 50% / 58% 58% 42% 42%;
+    background:radial-gradient(circle at 34% 26%,#ffe9c9,#f2b880 48%,#e07a5f 88%);
+    box-shadow:inset -6px -8px 16px rgba(199,91,63,.35), 0 8px 20px -6px rgba(224,122,95,.5);
+  }
+  .mood .tag{font-size:10.5px;letter-spacing:2px;color:var(--terra-deep);font-weight:700;margin-bottom:6px}
+  .mood h3{font-size:16px;font-weight:700;margin-bottom:6px}
+  .mood p{font-size:12px;color:var(--ink-soft);line-height:1.8}
+
+  .section-title{display:flex;align-items:baseline;justify-content:space-between;margin:0 4px 14px}
+  .section-title h2{font-size:15px;font-weight:700;letter-spacing:1.5px}
+  .section-title h2::before{content:"●";color:var(--sage);font-size:9px;margin-right:7px;vertical-align:2px}
+  .section-title span{font-size:11px;color:var(--ink-soft)}
+
+  .starmap{padding:14px 10px 16px;margin-bottom:24px;background:linear-gradient(180deg,#fffdf8,#fdf7ec)}
+  .starmap svg{width:100%;display:block}
+  .chips{display:flex;gap:8px;justify-content:center;margin-top:8px;flex-wrap:wrap}
+  .chip{font-size:10.5px;color:var(--ink-soft);background:#f5edde;border-radius:999px;padding:5px 12px;letter-spacing:.5px}
+  .chip.on{background:var(--terra);color:#fff;font-weight:700}
+
+  .report{margin-bottom:14px}
+  .report blockquote{
+    font-size:14.5px;line-height:2;color:#5a4c3a;background:#fdf6ea;border-radius:16px;
+    padding:14px 16px;margin:6px 0 10px;position:relative;
+  }
+  .report blockquote::before{content:"“";position:absolute;top:-4px;left:10px;font-size:34px;color:var(--honey);font-family:Georgia,serif}
+  .report .quote-src{font-size:11px;color:var(--ink-soft);text-align:right}
+  .report p.body{font-size:13px;color:#6b5d49;line-height:1.95;margin-top:12px}
+  .actions{display:flex;gap:10px;margin-top:18px}
+  .btn{flex:1;text-align:center;font-size:12.5px;letter-spacing:1.5px;padding:13px 0;border-radius:16px;cursor:pointer;transition:.25s;font-weight:600}
+  .btn-primary{background:var(--terra);color:#fff;box-shadow:0 8px 20px -6px rgba(224,122,95,.6)}
+  .btn-primary:hover{background:var(--terra-deep)}
+  .btn-ghost{background:#f5edde;color:var(--ink-soft)}
+  .btn-ghost:hover{background:#efe4d0;color:var(--ink)}
+
+  .tabbar{
+    position:fixed;left:50%;transform:translateX(-50%);bottom:16px;z-index:10;
+    width:min(420px,calc(100% - 36px));
+    display:flex;justify-content:space-around;
+    background:rgba(255,253,248,.92);border:1px solid rgba(190,160,120,.2);border-radius:26px;
+    backdrop-filter:blur(16px);padding:12px 8px;
+    box-shadow:0 16px 44px -14px rgba(120,90,50,.35);
+  }
+  .tab{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10px;color:var(--ink-soft)}
+  .tab i{font-style:normal;font-size:18px}
+  .tab.on{color:var(--terra-deep);font-weight:700}
+
+  .spec{margin-top:34px;font-size:11px;color:var(--ink-soft);line-height:2;border-top:1px dashed #ddcfb8;padding-top:16px}
+  .spec b{color:var(--ink)}
+  .swatches{display:flex;gap:8px;margin-top:8px}
+  .sw{width:26px;height:26px;border-radius:9px;border:1px solid rgba(0,0,0,.06)}
+</style>
+</head>
+<body>
+<div class="sun"></div><div class="blob b1"></div><div class="blob b2"></div>
+
+<div class="wrap">
+  <header class="topbar">
+    <div class="logo"><span class="mark">✦</span>星图</div>
+    <div class="avatar">澄</div>
+  </header>
+
+  <section class="hero">
+    <span class="date">☀️ 10月24日 · 记录第 18 天</span>
+    <h1>晚上好，阿澄。<br>辛苦了一天，<em>慢慢来就好</em>。</h1>
+    <p>你的星图上已经有 23 颗星星啦。最近「工作的意义」长得最快，它好像有很多话想对你说。</p>
+  </section>
+
+  <section class="entries">
+    <div class="card entry e1">
+      <span class="arrow">→</span>
+      <span class="icon">📝</span>
+      <div><h3>记录星图</h3><p>把今天理清楚<br>聊几句或直接填</p></div>
+    </div>
+    <div class="card entry e2">
+      <span class="arrow">→</span>
+      <span class="icon">🌱</span>
+      <div><h3>和小星聊聊</h3><p>你的陪伴星灵<br>测验 · 树洞 · 碎碎念</p></div>
+    </div>
+  </section>
+
+  <section class="card mood">
+    <div class="egg"></div>
+    <div>
+      <div class="tag">今日心情色 · 蜂蜜琥珀</div>
+      <h3>疲惫里透出一点温热</h3>
+      <p>今天虽然说了三次「累」，但聊到猫的时候，颜色明显亮了起来。</p>
+    </div>
+  </section>
+
+  <div class="section-title"><h2>内心星图</h2><span>近 7 天演化</span></div>
+  <section class="card starmap">
+    <svg viewBox="0 0 360 200">
+      <!-- 柔和连线 -->
+      <g stroke="#e3d3b8" stroke-width="1.6" stroke-linecap="round">
+        <line x1="88" y1="62" x2="150" y2="102"/><line x1="150" y1="102" x2="232" y2="72"/>
+        <line x1="232" y1="72" x2="282" y2="122"/><line x1="150" y1="102" x2="118" y2="152"/>
+        <line x1="118" y1="152" x2="200" y2="142"/><line x1="200" y1="142" x2="282" y2="122"/>
+      </g>
+      <!-- 软糖星星 -->
+      <g>
+        <circle cx="88" cy="62" r="11" fill="#9caf88"/>
+        <circle cx="150" cy="102" r="16" fill="#e07a5f"/>
+        <circle cx="232" cy="72" r="13" fill="#e8a2a2"/>
+        <circle cx="282" cy="122" r="9" fill="#9caf88"/>
+        <circle cx="118" cy="152" r="10" fill="#f2b880"/>
+        <circle cx="200" cy="142" r="12" fill="#a8bfd8"/>
+      </g>
+      <!-- 高光 -->
+      <g fill="#fff" opacity=".55">
+        <circle cx="84" cy="58" r="3"/><circle cx="144" cy="96" r="4.5"/>
+        <circle cx="228" cy="67" r="3.6"/><circle cx="114" cy="148" r="3"/>
+        <circle cx="196" cy="137" r="3.4"/>
+      </g>
+      <g fill="#8a7d6b" font-size="9.5" text-anchor="middle" letter-spacing="1">
+        <text x="88" y="44">新项目</text><text x="150" y="132">工作的意义</text>
+        <text x="232" y="54">和妈妈通话</text><text x="282" y="146">健身</text>
+        <text x="118" y="176">睡眠</text><text x="200" y="168">猫</text>
+      </g>
+    </svg>
+    <div class="chips">
+      <span class="chip">10/18</span><span class="chip">10/19</span><span class="chip">10/20</span>
+      <span class="chip on">10/21</span><span class="chip">10/22</span><span class="chip">10/23</span>
+    </div>
+  </section>
+
+  <div class="section-title"><h2>今日报告 · 摘要</h2><span>叙事版</span></div>
+  <section class="card report">
+    <blockquote>忙了一整天，回头一看好像什么都没留下。但撸猫那十分钟，是真的放松。</blockquote>
+    <div class="quote-src">—— 你今天的原话</div>
+    <p class="body">「什么都没留下」的感觉，这个月第三次出现。它常常在你连续输出、却没有即时反馈的日子来访。这不是你的问题，是节奏的问题。</p>
+    <div class="actions">
+      <div class="btn btn-primary">读完整报告</div>
+      <div class="btn btn-ghost">说得对</div>
+      <div class="btn btn-ghost">不太对</div>
+    </div>
+  </section>
+
+  <div class="spec">
+    <b>风格 02 · 晨光治愈（Warm Dawn）</b><br>
+    气质：奶油纸感 × 柔和手绘 × 晨起暖光，像一本会回话的日记本，亲和力与安全感最强。<br>
+    配色：#faf4ea 奶油底 / #e07a5f 陶土橙 / #9caf88 鼠尾草绿 / #f2b880 蜂蜜<br>
+    字体：粗圆无衬线；圆角 26px；柔和投影 + 高光软糖质感
+    <div class="swatches">
+      <span class="sw" style="background:#faf4ea"></span><span class="sw" style="background:#e07a5f"></span>
+      <span class="sw" style="background:#9caf88"></span><span class="sw" style="background:#f2b880"></span>
+      <span class="sw" style="background:#e8a2a2"></span><span class="sw" style="background:#a8bfd8"></span>
+    </div>
+  </div>
+</div>
+
+<nav class="tabbar">
+  <div class="tab on"><i>🏠</i>首页</div>
+  <div class="tab"><i>✨</i>星图</div>
+  <div class="tab"><i>📖</i>报告</div>
+  <div class="tab"><i>💬</i>小星</div>
+  <div class="tab"><i>☺</i>我的</div>
+</nav>
+</body>
+</html>

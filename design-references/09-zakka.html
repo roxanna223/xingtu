@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>风格 09 · 盐系日杂 | 星图视觉参考</title>
+<style>
+  :root{
+    --bg:#f2f1ec;
+    --card:#fbfaf7;
+    --ink:#3a3f44;
+    --ink-2:#7d838a;
+    --ink-3:#b4b9bd;
+    --navy:#3d5a73;
+    --sage:#a8bfa0;
+    --sand:#e8dcc8;
+    --clay:#cf9b7b;
+    --line:#dcd9d0;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{
+    font-family:"PingFang SC","Hiragino Sans","Microsoft YaHei",sans-serif;
+    background:var(--bg);color:var(--ink);min-height:100vh;
+    background-image:radial-gradient(rgba(90,90,80,.05) 1px,transparent 1px);
+    background-size:16px 16px;
+  }
+  .wrap{max-width:460px;margin:0 auto;padding:26px 20px 120px}
+
+  .topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:30px}
+  .logo{display:flex;align-items:baseline;gap:8px}
+  .logo .jp{font-size:11px;color:var(--ink-3);letter-spacing:2px;writing-mode:vertical-rl}
+  .logo .name{font-size:21px;font-weight:700;letter-spacing:8px}
+  .logo .dot{color:var(--clay)}
+  .date-chip{
+    font-size:10px;color:var(--ink-2);border:1px solid var(--line);border-radius:999px;
+    padding:6px 13px;letter-spacing:1.5px;background:var(--card);
+  }
+
+  /* 杂志封面 hero */
+  .hero{
+    background:var(--card);border:1px solid var(--line);padding:30px 26px 26px;
+    position:relative;margin-bottom:26px;
+  }
+  .hero::before{
+    content:"";position:absolute;top:10px;left:10px;right:10px;bottom:10px;
+    border:1px solid var(--line);pointer-events:none;
+  }
+  .hero .vol{
+    display:flex;justify-content:space-between;font-size:9.5px;letter-spacing:3px;
+    color:var(--ink-3);margin-bottom:24px;text-transform:uppercase;
+  }
+  .hero h1{font-size:27px;font-weight:700;line-height:1.6;letter-spacing:2px}
+  .hero h1 .u{border-bottom:3px solid var(--sage)}
+  .hero .lead{margin-top:16px;font-size:12.5px;color:var(--ink-2);line-height:2}
+  .hero .foot{
+    margin-top:20px;padding-top:14px;border-top:1px solid var(--line);
+    display:flex;justify-content:space-between;font-size:10px;color:var(--ink-3);letter-spacing:1px;
+  }
+  .hero .moon{
+    position:absolute;top:22px;right:24px;width:34px;height:34px;border-radius:50%;
+    background:var(--sand);box-shadow:inset -8px -4px 0 var(--card);
+    transform:rotate(-20deg);
+  }
+
+  /* 入口：照片卡 */
+  .duo{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:26px}
+  .pcard{
+    background:var(--card);border:1px solid var(--line);padding:10px 10px 14px;cursor:pointer;
+    transition:.3s cubic-bezier(.2,.8,.2,1);
+  }
+  .pcard:hover{transform:translateY(-4px);box-shadow:0 14px 26px -14px rgba(60,60,55,.3)}
+  .pcard .ph{
+    height:84px;display:flex;align-items:center;justify-content:center;font-size:30px;
+    margin-bottom:12px;position:relative;
+  }
+  .pc1 .ph{background:linear-gradient(160deg,#dfe9e2,#c3d4c7)}
+  .pc2 .ph{background:linear-gradient(160deg,#e9e2d8,#d9cbb6)}
+  .pcard h3{font-size:14.5px;font-weight:700;text-align:center;letter-spacing:1px}
+  .pcard p{font-size:10px;color:var(--ink-2);text-align:center;margin-top:5px;line-height:1.7}
+  .pcard .jp-tag{
+    position:absolute;top:6px;left:6px;font-size:8.5px;color:rgba(58,63,68,.5);letter-spacing:1px;
+    background:rgba(251,250,247,.8);padding:2px 6px;
+  }
+
+  /* 心情色：试色记录 */
+  .mood{
+    background:var(--card);border:1px solid var(--line);padding:22px;margin-bottom:26px;
+    display:flex;gap:18px;
+  }
+  .mood .strip{
+    width:58px;flex:none;border:1px solid var(--line);display:flex;flex-direction:column;
+  }
+  .mood .strip i{flex:1}
+  .mood .strip .l1{background:#f2d7a8}.mood .strip .l2{background:#e8b48c}.mood .strip .l3{background:#cf8f7f}
+  .mood .strip span{
+    font-size:8px;letter-spacing:1px;color:var(--ink-3);text-align:center;padding:5px 0;
+    background:var(--card);border-top:1px solid var(--line);
+  }
+  .mood .tag{font-size:9.5px;letter-spacing:2.5px;color:var(--navy);font-weight:700;margin-bottom:8px}
+  .mood h3{font-size:16px;font-weight:700;margin-bottom:8px;letter-spacing:1px}
+  .mood p{font-size:11.5px;color:var(--ink-2);line-height:1.95}
+  .mood .memo{
+    margin-top:12px;font-size:10px;color:var(--ink-3);border-left:2px solid var(--sage);padding-left:9px;
+  }
+
+  .sec{display:flex;align-items:baseline;gap:10px;margin:0 2px 14px}
+  .sec h2{font-size:14px;font-weight:700;letter-spacing:3px}
+  .sec .no{font-size:9.5px;color:var(--clay);letter-spacing:2px}
+  .sec .line{flex:1;height:1px;background:var(--line)}
+  .sec span{font-size:10px;color:var(--ink-3)}
+
+  /* 星图：标本图纸 */
+  .map{
+    background:var(--card);border:1px solid var(--line);padding:16px 12px 14px;margin-bottom:26px;
+  }
+  .map svg{width:100%;display:block}
+  .chips{display:flex;gap:6px;justify-content:center;margin-top:12px;flex-wrap:wrap}
+  .chip{font-size:9.5px;color:var(--ink-2);border:1px solid var(--line);padding:4px 10px;background:var(--bg);letter-spacing:.5px}
+  .chip.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+
+  /* 报告：杂志引文 */
+  .report{background:var(--card);border:1px solid var(--line);padding:24px 22px;margin-bottom:14px}
+  .report .head{
+    display:flex;justify-content:space-between;align-items:center;
+    font-size:9.5px;letter-spacing:2.5px;color:var(--ink-3);margin-bottom:16px;
+  }
+  .report .head b{color:var(--clay)}
+  .report blockquote{
+    font-size:15px;font-weight:700;line-height:2;text-align:center;padding:6px 10px 14px;
+  }
+  .report blockquote::before,.report blockquote::after{
+    display:block;font-size:22px;color:var(--sage);font-family:Georgia,serif;line-height:1;
+  }
+  .report blockquote::before{content:"“";text-align:left}
+  .report blockquote::after{content:"”";text-align:right}
+  .report .src{font-size:10px;color:var(--ink-3);text-align:center;margin-bottom:14px}
+  .report .body{
+    font-size:12px;color:var(--ink-2);line-height:2.05;padding-top:14px;border-top:1px solid var(--line);
+  }
+  .actions{display:flex;gap:10px;margin-top:18px}
+  .btn{
+    flex:1;text-align:center;font-size:11.5px;font-weight:700;letter-spacing:2px;padding:12px 0;
+    cursor:pointer;transition:.25s;
+  }
+  .btn-primary{background:var(--navy);color:#fff}
+  .btn-primary:hover{background:#2f4a5f}
+  .btn-ghost{border:1px solid var(--line);color:var(--ink-2);background:var(--bg)}
+  .btn-ghost:hover{border-color:var(--ink-2);color:var(--ink)}
+
+  .tabbar{
+    position:fixed;left:50%;transform:translateX(-50%);bottom:0;z-index:10;
+    width:100%;max-width:460px;
+    display:flex;justify-content:space-around;
+    background:var(--card);border-top:1px solid var(--line);padding:12px 8px 16px;
+  }
+  .tab{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:9.5px;color:var(--ink-3);letter-spacing:1px}
+  .tab i{font-style:normal;font-size:16px;filter:grayscale(.4)}
+  .tab.on{color:var(--navy);font-weight:700}
+  .tab.on i{filter:none}
+
+  .spec{margin-top:36px;font-size:11px;color:var(--ink-2);line-height:2;border-top:1px solid var(--line);padding-top:16px}
+  .spec b{color:var(--ink)}
+  .swatches{display:flex;gap:8px;margin-top:8px}
+  .sw{width:26px;height:26px;border:1px solid var(--line)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="topbar">
+    <div class="logo">
+      <span class="name">星<span class="dot">・</span>图</span>
+      <span class="jp">ほしず</span>
+    </div>
+    <span class="date-chip">10.24 Thu · 曇り</span>
+  </header>
+
+  <!-- 杂志封面 -->
+  <section class="hero">
+    <div class="moon"></div>
+    <div class="vol"><span>STAR MAP JOURNAL</span><span>VOL.018</span></div>
+    <h1>晚上好，阿澄。<br>今天也<span class="u">好好度过了</span>呢。</h1>
+    <p class="lead">星图记事本已经攒了 23 颗星。「工作的意义」这一页，最近被翻得特别勤——不如今晚花十分钟，听听它想说什么。</p>
+    <div class="foot"><span>记录第 18 天</span><span>蝎座の月</span></div>
+  </section>
+
+  <!-- 照片入口 -->
+  <section class="duo">
+    <div class="pcard pc1">
+      <div class="ph"><span class="jp-tag">きろく</span>🍵</div>
+      <h3>记录星图</h3>
+      <p>把今天理清楚<br>聊几句或直接填</p>
+    </div>
+    <div class="pcard pc2">
+      <div class="ph"><span class="jp-tag">おしゃべり</span>🐈</div>
+      <h3>和小星聊聊</h3>
+      <p>陪伴星灵<br>测验 · 树洞 · 碎碎念</p>
+    </div>
+  </section>
+
+  <!-- 心情试色 -->
+  <div class="sec"><span class="no">No.01</span><h2>今日心情色</h2><div class="line"></div><span>試色</span></div>
+  <section class="mood">
+    <div class="strip"><i class="l1"></i><i class="l2"></i><i class="l3"></i><span>AMBER</span></div>
+    <div>
+      <div class="tag">MOOD SWATCH — 琥珀焙茶</div>
+      <h3>累，但有回甘</h3>
+      <p>今天三次说到「累」。不过翻到「猫」那一页时，纸面都亮了一点。</p>
+      <div class="memo">观察：疲惫值偏高 / 情绪温度偏暖 / 表达欲 ↑</div>
+    </div>
+  </section>
+
+  <!-- 星图标本 -->
+  <div class="sec"><span class="no">No.02</span><h2>内心星图</h2><div class="line"></div><span>近 7 天</span></div>
+  <section class="map">
+    <svg viewBox="0 0 360 180">
+      <!-- 细线星座 -->
+      <g stroke="#c8c4b8" stroke-width="1">
+        <line x1="86" y1="52" x2="150" y2="92"/><line x1="150" y1="92" x2="232" y2="62"/>
+        <line x1="232" y1="62" x2="282" y2="108"/><line x1="150" y1="92" x2="118" y2="136"/>
+        <line x1="118" y1="136" x2="200" y2="128"/><line x1="200" y1="128" x2="282" y2="108"/>
+      </g>
+      <!-- 圆点 + 圆圈 -->
+      <g fill="none" stroke-width="1.2">
+        <circle cx="86" cy="52" r="7" stroke="#a8bfa0"/>
+        <circle cx="150" cy="92" r="10" stroke="#3d5a73"/>
+        <circle cx="232" cy="62" r="8" stroke="#cf9b7b"/>
+        <circle cx="282" cy="108" r="6" stroke="#a8bfa0"/>
+        <circle cx="118" cy="136" r="6.5" stroke="#c9a86a"/>
+        <circle cx="200" cy="128" r="7.5" stroke="#3d5a73"/>
+      </g>
+      <g>
+        <circle cx="86" cy="52" r="3" fill="#a8bfa0"/>
+        <circle cx="150" cy="92" r="4.5" fill="#3d5a73"/>
+        <circle cx="232" cy="62" r="3.4" fill="#cf9b7b"/>
+        <circle cx="282" cy="108" r="2.4" fill="#a8bfa0"/>
+        <circle cx="118" cy="136" r="2.6" fill="#c9a86a"/>
+        <circle cx="200" cy="128" r="3" fill="#3d5a73"/>
+      </g>
+      <g fill="#7d838a" font-size="9" text-anchor="middle" letter-spacing="1">
+        <text x="86" y="38">新项目</text><text x="150" y="116">工作的意义</text>
+        <text x="232" y="48">和妈妈通话</text><text x="282" y="128">健身</text>
+        <text x="118" y="156">睡眠</text><text x="200" y="150">猫</text>
+      </g>
+      <!-- 图注 -->
+      <text x="16" y="170" font-size="8" fill="#b4b9bd" letter-spacing="2">FIG.7 — 七日星域標本</text>
+    </svg>
+    <div class="chips">
+      <span class="chip">10/18</span><span class="chip">10/19</span><span class="chip">10/20</span>
+      <span class="chip on">10/21</span><span class="chip">10/22</span><span class="chip">10/23</span>
+    </div>
+  </section>
+
+  <!-- 报告引文 -->
+  <div class="sec"><span class="no">No.03</span><h2>今日报告</h2><div class="line"></div><span>叙事版</span></div>
+  <section class="report">
+    <div class="head"><span>DAILY COLUMN</span><b>○ 已留痕</b></div>
+    <blockquote>忙了一整天，回头一看好像什么都没留下。但撸猫那十分钟，是真的放松。</blockquote>
+    <div class="src">—— 你今天的原话</div>
+    <p class="body">「什么都没留下」的感觉，这个月第三次来。它总在你连续输出、没人鼓掌的日子出现。不是能力的问题，是节奏的问题——今晚请允许自己无所事事。</p>
+    <div class="actions">
+      <div class="btn btn-primary">读完整报告</div>
+      <div class="btn btn-ghost">说得对</div>
+      <div class="btn btn-ghost">不太对</div>
+    </div>
+  </section>
+
+  <div class="spec">
+    <b>风格 09 · 盐系日杂（Zakka Journal）</b><br>
+    气质：生活方式杂志 + 标本图鉴 + 试色记录，安静、干净、有生活气息。「活人感」来自编辑感和生活细节，不吵不闹。<br>
+    配色：#f2f1ec 米灰底 / #3d5a73 藏青 / #a8bfa0 鼠尾草 / #cf9b7b 陶土<br>
+    特征：1px 细线框、双细框卡片、竖排日文点缀、编号栏目（No.01…）、克制的灰调彩色
+    <div class="swatches">
+      <span class="sw" style="background:#f2f1ec"></span><span class="sw" style="background:#3d5a73"></span>
+      <span class="sw" style="background:#a8bfa0"></span><span class="sw" style="background:#cf9b7b"></span>
+      <span class="sw" style="background:#e8dcc8"></span>
+    </div>
+  </div>
+</div>
+
+<nav class="tabbar">
+  <div class="tab on"><i>⌂</i>首页</div>
+  <div class="tab"><i>✦</i>星图</div>
+  <div class="tab"><i>▤</i>报告</div>
+  <div class="tab"><i>✉</i>小星</div>
+  <div class="tab"><i>○</i>我的</div>
+</nav>
+</body>
+</html>

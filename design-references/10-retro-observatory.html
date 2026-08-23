@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>风格 10 · 复古天文台 | 星图视觉参考</title>
+<style>
+  :root{
+    --green-deep:#1e2b26;
+    --green-mid:#26352e;
+    --panel:#2e4034;
+    --brass:#c9a25e;
+    --brass-hi:#e8c98a;
+    --brass-dim:#8a744c;
+    --cream:#efe6d2;
+    --cream-dim:#b8ad94;
+    --copper:#b06a4a;
+    --teal:#6fa598;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{
+    font-family:Georgia,"Noto Serif SC","STSong","SimSun",serif;
+    background:
+      radial-gradient(900px 500px at 50% -10%, #31463a 0%, transparent 60%),
+      var(--green-deep);
+    color:var(--cream);min-height:100vh;
+  }
+  .wrap{max-width:460px;margin:0 auto;padding:28px 22px 120px;position:relative}
+
+  /* 金属框通用 */
+  .frame{
+    background:var(--green-mid);
+    border:1px solid var(--brass);
+    outline:1px solid rgba(201,162,94,.3);outline-offset:4px;
+    padding:20px;position:relative;
+  }
+  .rivet::before,.rivet::after{
+    content:"●";position:absolute;font-size:7px;color:var(--brass);
+  }
+  .rivet::before{top:5px;left:8px}
+  .rivet::after{bottom:5px;right:8px}
+
+  .topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:30px}
+  .logo{display:flex;align-items:center;gap:12px}
+  .dial{
+    width:44px;height:44px;border-radius:50%;border:2px solid var(--brass);
+    background:radial-gradient(circle,#31463a 30%,#223028);
+    display:flex;align-items:center;justify-content:center;color:var(--brass-hi);font-size:16px;
+    box-shadow:inset 0 2px 6px rgba(0,0,0,.6), 0 1px 0 rgba(232,201,138,.3);
+    animation:tick 8s steps(8) infinite;
+  }
+  @keyframes tick{to{transform:rotate(360deg)}}
+  .logo .name{font-size:21px;letter-spacing:8px;color:var(--cream)}
+  .logo .en{font-size:8.5px;letter-spacing:3.5px;color:var(--brass);margin-top:4px}
+  .year{
+    font-size:10px;letter-spacing:2px;color:var(--brass);border:1px solid var(--brass-dim);
+    padding:6px 12px;border-radius:999px;
+  }
+
+  /* 黄铜铭牌 hero */
+  .plaque{
+    text-align:center;padding:34px 26px 30px;margin-bottom:28px;
+    background:
+      radial-gradient(500px 200px at 50% 0%, rgba(201,162,94,.12), transparent 70%),
+      var(--green-mid);
+  }
+  .plaque .est{font-size:9px;letter-spacing:4px;color:var(--brass-dim);margin-bottom:18px}
+  .plaque h1{font-size:27px;line-height:1.65;letter-spacing:3px;color:var(--cream)}
+  .plaque h1 em{font-style:normal;color:var(--brass-hi)}
+  .plaque .orn{margin:18px 0;color:var(--brass);font-size:12px;letter-spacing:6px}
+  .plaque p{font-size:12px;color:var(--cream-dim);line-height:2.1;letter-spacing:1px}
+  .plaque .coord{
+    margin-top:16px;font-size:9.5px;letter-spacing:2px;color:var(--teal);font-family:Menlo,monospace;
+  }
+
+  /* 双入口：仪器按钮 */
+  .duo{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:28px}
+  .machine{
+    text-align:center;padding:22px 14px 18px;cursor:pointer;transition:.25s;
+  }
+  .machine:hover{background:#33483a}
+  .machine .gauge{
+    width:58px;height:58px;border-radius:50%;margin:0 auto 14px;
+    border:2px solid var(--brass);position:relative;
+    background:radial-gradient(circle,#1e2b26 55%,#18211c);
+    box-shadow:inset 0 3px 8px rgba(0,0,0,.7);
+    display:flex;align-items:center;justify-content:center;font-size:22px;
+  }
+  .machine .gauge::after{
+    content:"";position:absolute;inset:4px;border-radius:50%;
+    border:1px dashed rgba(201,162,94,.35);
+  }
+  .machine h3{font-size:15.5px;letter-spacing:3px;color:var(--cream)}
+  .machine p{font-size:10px;color:var(--cream-dim);margin-top:7px;line-height:1.8;letter-spacing:1px}
+  .machine .switch{
+    margin:12px auto 0;width:34px;height:14px;border-radius:999px;background:#18211c;
+    border:1px solid var(--brass-dim);position:relative;
+  }
+  .machine .switch::after{
+    content:"";position:absolute;top:1px;left:2px;width:10px;height:10px;border-radius:50%;
+    background:var(--brass);box-shadow:0 0 6px rgba(201,162,94,.6);transition:.25s;
+  }
+  .machine:hover .switch::after{left:20px;background:var(--brass-hi)}
+
+  .sec{
+    display:flex;align-items:center;gap:12px;margin:0 2px 14px;
+    font-size:10px;letter-spacing:3px;color:var(--brass);
+  }
+  .sec .line{flex:1;height:1px;background:linear-gradient(90deg,var(--brass-dim),transparent)}
+  .sec:last-child .line{background:linear-gradient(90deg,transparent,var(--brass-dim))}
+
+  /* 心情色：棱镜读数 */
+  .prism{display:flex;gap:18px;align-items:center;margin-bottom:28px}
+  .lens{
+    width:76px;height:76px;border-radius:50%;flex:none;
+    border:3px solid var(--brass);
+    background:conic-gradient(from 200deg,#e8c98a,#e8956d,#a05a8c,#6fa598,#e8c98a);
+    box-shadow:inset 0 0 0 5px var(--green-deep), inset 0 4px 12px rgba(0,0,0,.4), 0 0 24px rgba(201,162,94,.25);
+  }
+  .prism .tag{font-size:9px;letter-spacing:3px;color:var(--brass);margin-bottom:8px}
+  .prism h3{font-size:16.5px;letter-spacing:2px;margin-bottom:8px}
+  .prism p{font-size:11.5px;color:var(--cream-dim);line-height:1.9;letter-spacing:.5px}
+  .prism .readout{
+    margin-top:10px;font-family:Menlo,monospace;font-size:9.5px;color:var(--teal);letter-spacing:1px;
+  }
+
+  /* 星图：黄铜星盘 */
+  .astrolabe{padding:16px 10px 14px;margin-bottom:28px;background:#223028}
+  .astrolabe svg{width:100%;display:block}
+  .chips{display:flex;gap:8px;justify-content:center;margin-top:12px;flex-wrap:wrap}
+  .chip{
+    font-size:10px;color:var(--cream-dim);border:1px solid var(--brass-dim);
+    padding:5px 11px;border-radius:999px;letter-spacing:1px;
+  }
+  .chip.on{background:var(--brass);color:var(--green-deep);border-color:var(--brass);font-weight:700}
+
+  /* 报告：观测日志 */
+  .logbook{margin-bottom:14px}
+  .logbook .head{
+    display:flex;justify-content:space-between;font-size:9px;letter-spacing:3px;
+    color:var(--brass);border-bottom:1px solid var(--brass-dim);padding-bottom:10px;margin-bottom:16px;
+  }
+  .logbook blockquote{
+    font-size:15px;line-height:2.1;letter-spacing:1px;color:var(--cream);
+    text-indent:2em;margin-bottom:10px;
+  }
+  .logbook .src{font-size:10px;color:var(--brass-dim);text-align:right;letter-spacing:2px}
+  .logbook .body{
+    font-size:12.5px;color:var(--cream-dim);line-height:2.1;letter-spacing:1px;margin-top:14px;
+    text-indent:2em;
+  }
+  .logbook .sign{
+    margin-top:18px;text-align:right;font-size:12px;color:var(--brass);letter-spacing:2px;font-style:italic;
+  }
+  .actions{display:flex;gap:0;margin-top:20px;border:1px solid var(--brass-dim)}
+  .btn{
+    flex:1;text-align:center;font-size:11.5px;letter-spacing:3px;padding:13px 0;cursor:pointer;
+    border-right:1px solid var(--brass-dim);transition:.25s;color:var(--cream-dim);
+  }
+  .btn:last-child{border-right:none}
+  .btn-primary{background:var(--brass);color:var(--green-deep);font-weight:700}
+  .btn-primary:hover{background:var(--brass-hi)}
+  .btn-ghost:hover{color:var(--cream);background:rgba(201,162,94,.1)}
+
+  .tabbar{
+    position:fixed;left:50%;transform:translateX(-50%);bottom:0;z-index:10;
+    width:100%;max-width:460px;
+    display:flex;justify-content:space-around;
+    background:#18211c;border-top:1px solid var(--brass);
+    padding:12px 8px 16px;
+  }
+  .tab{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:9.5px;color:var(--brass-dim);letter-spacing:2px}
+  .tab i{font-style:normal;font-size:16px;color:var(--brass-dim)}
+  .tab.on,.tab.on i{color:var(--brass-hi)}
+
+  .spec{margin-top:36px;font-size:11px;color:var(--cream-dim);line-height:2.1;border-top:1px solid var(--brass-dim);padding-top:16px;letter-spacing:1px}
+  .spec b{color:var(--cream)}
+  .swatches{display:flex;gap:8px;margin-top:8px}
+  .sw{width:26px;height:26px;border:1px solid var(--brass-dim)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="topbar">
+    <div class="logo">
+      <div class="dial">✦</div>
+      <div>
+        <div class="name">星 图</div>
+        <div class="en">OBSERVATORY No.018</div>
+      </div>
+    </div>
+    <span class="year">甲辰 · 2026</span>
+  </header>
+
+  <!-- 黄铜铭牌 -->
+  <section class="frame rivet plaque">
+    <div class="est">— EVENING OBSERVATION · 晚间观测 —</div>
+    <h1>晚上好，阿澄。<br>今夜天朗气清，<br><em>二十三星可见</em>。</h1>
+    <div class="orn">❦ ✦ ❦</div>
+    <p>「工作的意义」星域近七日亮度上升四成，为当前天区最活跃目标。建议今晚安排一次十分钟的定向观测。</p>
+    <div class="coord">RA 16h 29m · DEC −26° 25′ · 天蝎宫</div>
+  </section>
+
+  <!-- 仪器入口 -->
+  <div class="sec"><div class="line"></div><span>观测仪器 · INSTRUMENTS</span><div class="line"></div></div>
+  <section class="duo">
+    <div class="frame machine">
+      <div class="gauge">✎</div>
+      <h3>记录星图</h3>
+      <p>录入今日观测<br>口述或手填皆可</p>
+      <div class="switch"></div>
+    </div>
+    <div class="frame machine">
+      <div class="gauge">☾</div>
+      <h3>与小星谈</h3>
+      <p>值守星灵<br>占测 · 解忧 · 闲叙</p>
+      <div class="switch"></div>
+    </div>
+  </section>
+
+  <!-- 棱镜心情 -->
+  <div class="sec"><div class="line"></div><span>棱镜读数 · SPECTRUM</span><div class="line"></div></div>
+  <section class="frame rivet prism">
+    <div class="lens"></div>
+    <div>
+      <div class="tag">TODAY'S SPECTRUM</div>
+      <h3>琥珀玫瑰 · 疲中藏温</h3>
+      <p>今日光谱三度提及「疲惫」，然「猫」之波段异常明亮。</p>
+      <div class="readout">λ 589nm · 温度 偏暖 · 振幅 ↑</div>
+    </div>
+  </section>
+
+  <!-- 黄铜星盘 -->
+  <div class="sec"><div class="line"></div><span>内心星盘 · ASTROLABE</span><div class="line"></div></div>
+  <section class="frame astrolabe">
+    <svg viewBox="0 0 360 200">
+      <!-- 刻度环 -->
+      <circle cx="180" cy="100" r="86" fill="none" stroke="#8a744c" stroke-width="1"/>
+      <circle cx="180" cy="100" r="86" fill="none" stroke="#8a744c" stroke-width="4" stroke-dasharray="1 17.9" opacity=".7"/>
+      <circle cx="180" cy="100" r="64" fill="none" stroke="#8a744c" stroke-width=".6" stroke-dasharray="2 4"/>
+      <circle cx="180" cy="100" r="3" fill="none" stroke="#c9a25e" stroke-width=".8"/>
+      <!-- 连线 -->
+      <g stroke="#c9a25e" stroke-width="1" opacity=".75">
+        <line x1="120" y1="66" x2="165" y2="96"/><line x1="165" y1="96" x2="228" y2="70"/>
+        <line x1="228" y1="70" x2="262" y2="118"/><line x1="165" y1="96" x2="140" y2="140"/>
+        <line x1="140" y1="140" x2="212" y2="134"/><line x1="212" y1="134" x2="262" y2="118"/>
+      </g>
+      <!-- 黄铜星 -->
+      <g fill="#e8c98a">
+        <circle cx="120" cy="66" r="3.4"/><circle cx="228" cy="70" r="4"/>
+        <circle cx="262" cy="118" r="2.8"/><circle cx="140" cy="140" r="3"/>
+      </g>
+      <circle cx="165" cy="96" r="5.5" fill="#e8c98a"/>
+      <circle cx="165" cy="96" r="10" fill="none" stroke="#e8c98a" stroke-width=".8" opacity=".6"/>
+      <circle cx="212" cy="134" r="3.6" fill="#e8c98a"/>
+      <circle cx="212" cy="134" r="7" fill="none" stroke="#e8c98a" stroke-width=".6" opacity=".5"/>
+      <!-- 铜绿伴星 -->
+      <circle cx="262" cy="118" r="1.6" fill="#6fa598"/>
+      <!-- 标签 -->
+      <g fill="#b8ad94" font-size="9" text-anchor="middle" letter-spacing="1.5">
+        <text x="120" y="52">新项目</text><text x="165" y="120" fill="#e8c98a">工作的意义</text>
+        <text x="228" y="56">与母通话</text><text x="262" y="138">健身</text>
+        <text x="140" y="160">睡眠</text><text x="212" y="156">猫</text>
+      </g>
+      <!-- 方位字 -->
+      <g fill="#8a744c" font-size="8" letter-spacing="2">
+        <text x="180" y="26" text-anchor="middle">北</text><text x="180" y="188" text-anchor="middle">南</text>
+        <text x="284" y="103" text-anchor="middle">东</text><text x="76" y="103" text-anchor="middle">西</text>
+      </g>
+    </svg>
+    <div class="chips">
+      <span class="chip">十八</span><span class="chip">十九</span><span class="chip">二十</span>
+      <span class="chip on">廿一</span><span class="chip">廿二</span>
+    </div>
+  </section>
+
+  <!-- 观测日志 -->
+  <div class="sec"><div class="line"></div><span>观测日志 · LOGBOOK</span><div class="line"></div></div>
+  <section class="frame rivet logbook">
+    <div class="head"><span>LOG No.018</span><span>观测员：小星</span></div>
+    <blockquote>忙了一整天，回头一看好像什么都没留下。但撸猫那十分钟，是真的放松。</blockquote>
+    <div class="src">—— 受访者原话 · 存档</div>
+    <p class="body">「什么都没留下」之感，本月第三次录得，均见于连日输出而未获回响之时。经比对，此非能力之亏，乃节律之警。今晚建议停止一切「有用」的活动。</p>
+    <div class="sign">—— 记录于天蝎宫升起时 ✦</div>
+    <div class="actions">
+      <div class="btn btn-primary">览读全志</div>
+      <div class="btn btn-ghost">说得对</div>
+      <div class="btn btn-ghost">不太对</div>
+    </div>
+  </section>
+
+  <div class="spec">
+    <b>风格 10 · 复古天文台（Retro Observatory）</b><br>
+    气质：黄铜仪器 + 深绿绒面 + 观测日志，像一台被精心保养的老星盘。「活人感」来自器物感与职业叙事（观测员小星）。独特且高级，和「星座起点」设定完美咬合。<br>
+    配色：#1e2b26 墨绿 / #c9a25e 黄铜 / #efe6d2 羊皮纸 / #6fa598 铜绿<br>
+    特征：衬线字体、双线描金框、铆钉、刻度环、拨杆开关、仪器读数
+    <div class="swatches">
+      <span class="sw" style="background:#1e2b26"></span><span class="sw" style="background:#c9a25e"></span>
+      <span class="sw" style="background:#e8c98a"></span><span class="sw" style="background:#efe6d2"></span>
+      <span class="sw" style="background:#6fa598"></span><span class="sw" style="background:#b06a4a"></span>
+    </div>
+  </div>
+</div>
+
+<nav class="tabbar">
+  <div class="tab on"><i>✦</i>首页</div>
+  <div class="tab"><i>☉</i>星图</div>
+  <div class="tab"><i>▤</i>报告</div>
+  <div class="tab"><i>☾</i>小星</div>
+  <div class="tab"><i>◉</i>我的</div>
+</nav>
+</body>
+</html>
