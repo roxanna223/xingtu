@@ -58,15 +58,19 @@ export async function extractAndMerge(record, profile) {
   let result
   if (cfg.mock) {
     result = mockExtract(record)
+    result._mockFallback = true
   } else {
     try {
       const raw = await callLLM(extractMessages(record, profile.topics))
       const parsed = parseJson(raw)
-      if (!parsed || !Array.isArray(parsed.topics)) result = mockExtract(record)
-      else result = { topics: parsed.topics || [], crisis: !!parsed.crisis }
+      if (!parsed || !Array.isArray(parsed.topics)) {
+        result = mockExtract(record)
+        result._mockFallback = true
+      } else result = { topics: parsed.topics || [], crisis: !!parsed.crisis }
     } catch (e) {
       console.warn('[engine] LLM 抽取失败，降级 Mock：', e.message)
       result = mockExtract(record)
+      result._mockFallback = true
     }
   }
   mergeIntoProfile(profile, result.topics, record)
