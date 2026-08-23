@@ -4,6 +4,8 @@
 import { extractMessages, reportMessages, periodReportMessages } from './prompts.js'
 import { personaSignal } from './cohort.js'
 import { emotionCountsFromTrack, mixEmotionColors, mockMoodNote } from './colors.js'
+import { moodFromCounts } from './mood.js'
+import { aiMoodCard } from './moodImage.js'
 import { QUIZZES, pickResult } from './quizzes.js'
 import { behaviorSummary } from './behavior.js'
 
@@ -171,6 +173,21 @@ export async function generateReport(profile, tier, todayTrack = '', todayRecord
   }
   report.generatedAt = today()
   report.crisis = report.crisis || !!profile.crisisFlag
+
+  // 心情卡：规则表兜底，有 MOONSHOT_API_KEY 时用 Kimi 按需增强（每天最多一次，随报告缓存）
+  const counts = emotionCountsFromTrack(todayTrack)
+  report.moodCard = moodFromCounts(counts)
+  try {
+    const ai = await aiMoodCard({
+      counts,
+      topTopics: report.topTopics || [],
+      freeText: todayRecord?.freeText || '',
+    })
+    if (ai) report.moodCard = ai
+  } catch {
+    /* 保留规则版 */
+  }
+
   profile.lastReport = report
   return report
 }
@@ -406,7 +423,28 @@ export function mockStar(history = [], quiz = null, summary = {}) {
 
 /* ---------------- 周期报告（周/月/季/年） ---------------- */
 
+// 周期报告缓存版本：规则升级后 bump，旧缓存自动失效重新生成
+export const PERIOD_CACHE_VERSION = 2
+
+// 空数据守卫：周期内 0 天记录时不调 LLM，直接输出最小报告。
+// 修复：旧版在空数据时仍走 LLM，产生诗意填充、把 cohort 当判定依据、"您/你"混用。
+export function minimalPeriodReport(agg) {
+  return {
+    playback: `${agg?.periodLabel || '这个周期'}还没有记录。`,
+    trends: [],
+    observations: [],
+    suggestion: '',
+    nextQuestion: '从今天开始，哪怕只写一句话，这个周期也会留下你的痕迹。',
+    moodColor: '#8f9db8', // 雾灰（中性，不暗示）
+    moodNote: '这个周期还没有留下心情颜色。',
+    cacheVersion: PERIOD_CACHE_VERSION,
+  }
+}
+
 export async function generatePeriodReport(profile, agg) {
+  if (!agg || !agg.dayCount || !agg.seriesCount) {
+    return minimalPeriodReport(agg)
+  }
   const cfg = llmConfig()
   let report
   if (cfg.mock) {
@@ -422,6 +460,7 @@ export async function generatePeriodReport(profile, agg) {
     }
   }
   report.generatedAt = today()
+  report.cacheVersion = PERIOD_CACHE_VERSION
   return report
 }
 

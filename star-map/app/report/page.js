@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import NavBar from '@/components/NavBar'
+import MoodCard from '@/components/MoodCard'
 
 const RANGE_LABELS = { week: '周报', month: '月报', quarter: '季报', year: '年报' }
 
@@ -194,10 +195,14 @@ export default function ReportPage() {
           )}
 
           <div className="card mood-card">
-            <div className="mood-swatch" style={{ background: report.moodColor }} />
-            <div>
-              <h2 style={{ marginBottom: 4 }}>今日心情色</h2>
-              <p className="muted" style={{ margin: 0, lineHeight: 1.7 }}>{report.moodNote || '今天的颜色来自你的心情轨迹。'}</p>
+            <MoodCard mood={report.moodCard} note={report.moodNote} />
+            <div className="mood-card-meta">
+              <h2 style={{ marginBottom: 6 }}>今日心情色</h2>
+              <div className="mood-name">
+                {report.moodCard?.name || '雾灰'}
+                {report.moodCard?.line ? <span className="mood-line"> · {report.moodCard.line}</span> : null}
+              </div>
+              <p className="muted" style={{ margin: '8px 0 0', lineHeight: 1.7 }}>{report.moodNote || '今天的颜色来自你的心情轨迹。'}</p>
             </div>
           </div>
 

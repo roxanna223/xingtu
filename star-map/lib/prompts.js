@@ -239,14 +239,16 @@ export function periodReportMessages(profile, agg) {
 - 情绪分布：${JSON.stringify(agg.emotionDist || {})}；
 - 周期活跃主题：${JSON.stringify(agg.topTopics || [])}；
 - 心情轨迹文本：${agg.trackAll ? agg.trackAll.slice(0, 500) : '（暂无）'}；
-- 用户画像：${JSON.stringify({ lifeTask: profile.user?.cohort?.lifeTask, careerStage: profile.user?.careerStage, starSign: profile.user?.starSign })}。
+- 用户画像（仅供参考）：${JSON.stringify({ lifeTask: profile.user?.cohort?.lifeTask, careerStage: profile.user?.careerStage })}。
 
 规则（与日报同一套价值观）：
 1. 证据落地：只基于上面的聚合数据与原话，observations 的 quote 必须逐字取自主题的原话；
 2. 禁止编造因果；若数据提示为"数据不全面/没有记录"，必须在 playback 开头如实说明，宁可少说；
-3. 建议生成四问过滤：对象只能是自己、可控、不伤关系、长期成长有用；纯记录无困扰时 suggestion 为空；
-4. 禁用命理/玄学词汇；不贴人格标签；
-5. trends 是 2~3 条客观趋势，必须能从数据中直接看出。
+3. **cohort/人生任务（lifeTask）信息只能让建议措辞更贴合用户的人生阶段，绝不能成为判断依据**；禁止写"你正处于XX期，所以…"这类推断；数据不足时不得用画像信息做任何推测；
+4. 建议生成四问过滤：对象只能是自己、可控、不伤关系、长期成长有用；纯记录无困扰时 suggestion 为空；
+5. 禁用命理/玄学词汇；不贴人格标签；
+6. **全文一律用"你"称呼用户，禁止使用"您"**；
+7. trends 是 2~3 条客观趋势，必须能从数据中直接看出；数据不全面时不得编造趋势。
 
 输出 JSON：
 {"playback":"周期整体回放，80~150 字","trends":["趋势1","趋势2"],"observations":[{"text":"观察","quote":"原话"}],"suggestion":"可执行建议或空字符串","nextQuestion":"下一周期的一个具体话题","moodNote":"周期心情色的一句话解读"}`

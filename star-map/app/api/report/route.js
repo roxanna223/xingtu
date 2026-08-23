@@ -1,5 +1,5 @@
 import { readProfile, writeProfile, readDays } from '@/lib/store'
-import { generateReport, generatePeriodReport } from '@/lib/engine'
+import { generateReport, generatePeriodReport, PERIOD_CACHE_VERSION } from '@/lib/engine'
 import { emotionCountsFromTrack, mixEmotionColors, parseTrackText } from '@/lib/colors'
 import { detectIntent, patternTopics } from '@/lib/intent'
 import { aggregateRange, currentOrLastComplete, RANGES } from '@/lib/period'
@@ -22,7 +22,7 @@ export async function GET(req) {
     if (range && RANGES[range]) {
       const period = currentOrLastComplete(range, todayStr)
       const cached = p.periodReports?.[range]
-      if (!refresh && cached && cached.generatedAt && cached.start === period.start) {
+      if (!refresh && cached && cached.generatedAt && cached.cacheVersion === PERIOD_CACHE_VERSION && cached.start === period.start) {
         return Response.json({ ...cached, range, periodLabel: period.periodLabel })
       }
       const agg = aggregateRange(p, days, range, todayStr)
