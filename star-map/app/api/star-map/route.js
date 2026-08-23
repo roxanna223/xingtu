@@ -1,6 +1,8 @@
 import { readProfile, readDays } from '@/lib/store'
+import { mixEmotionColors } from '@/lib/colors'
 
 const DAY = 86400000
+const DOMAINS = ['事业', '关系', '自我', '健康', '财务', '成长']
 
 export async function GET(req) {
   const url = new URL(req.url)
@@ -39,9 +41,37 @@ export async function GET(req) {
       sourceName: names[e.source],
       targetName: names[e.target],
     }))
+
+  // 六域数据统计（纯规则计算，不调 LLM；随 asOf 过滤后的节点聚合，演化回放时同步变化）
+  const totalFreq = nodes.reduce((a, n) => a + (n.freq || 1), 0)
+  const domains = DOMAINS.map((d) => {
+    const inD = nodes.filter((n) => n.domain === d)
+    const freq = inD.reduce((a, n) => a + (n.freq || 1), 0)
+    const emoCounts = {}
+    for (const n of inD) emoCounts[n.emotion] = (emoCounts[n.emotion] || 0) + (n.freq || 1)
+    const emoDist = Object.entries(emoCounts)
+      .sort((a, b) => b[1] - a[1])
+      .map(([emotion, count]) => ({ emotion, count }))
+    const inIds = new Set(inD.map((n) => n.id))
+    const edgeCount = edges.filter((e) => inIds.has(e.source) && inIds.has(e.target)).length
+    const lastActive = inD.reduce((a, n) => (n.lastActive > a ? n.lastActive : a), '')
+    return {
+      domain: d,
+      topicCount: inD.length,
+      freq,
+      share: totalFreq ? Math.round((freq / totalFreq) * 100) : 0,
+      dominantEmotion: emoDist[0]?.emotion || null,
+      emoDist,
+      color: emoDist.length ? mixEmotionColors(emoCounts) : '#5a6098',
+      edgeCount,
+      lastActive,
+    }
+  })
+
   return Response.json({
     nodes,
     edges,
+    domains,
     dayCount: (p.emotionSeries || []).length,
     dates,
     asOf: asOf || null,

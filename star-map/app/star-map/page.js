@@ -299,6 +299,62 @@ export default function StarMapPage() {
         )}
       </div>
 
+      {(data.domains || []).length > 0 && (
+        <>
+          <div className="sec-title">— 六域能量 · DOMAIN STATUS —</div>
+          <div className="domain-grid">
+            {data.domains.map((d) => (
+              <div key={d.domain} className="card domain-card">
+                <div className="domain-head">
+                  <span className="domain-name">{d.domain}</span>
+                  <span className="domain-count">
+                    {d.topicCount > 0 ? `${d.topicCount} 颗星 · 提及 ${d.freq} 次` : '还没有星星'}
+                  </span>
+                </div>
+                {d.topicCount > 0 ? (
+                  <>
+                    <div className="domain-bar-row">
+                      <div className="bar">
+                        <i style={{ width: `${Math.max(3, d.share)}%`, background: d.color }} />
+                      </div>
+                      <span className="domain-share">{d.share}%</span>
+                    </div>
+                    <div className="domain-emo">
+                      <span>主导情绪</span>
+                      <span className="tag" style={{ borderColor: d.color }}>
+                        <i style={{ background: EMO_COLORS[d.dominantEmotion] || d.color }} />
+                        {d.dominantEmotion}
+                      </span>
+                    </div>
+                    {(d.emoDist || []).length > 0 && (
+                      <div className="emo-seg-bar">
+                        {d.emoDist.map((e) => (
+                          <i
+                            key={e.emotion}
+                            title={`${e.emotion} × ${e.count}`}
+                            style={{
+                              width: `${Math.max(3, Math.round((e.count / d.freq) * 100))}%`,
+                              background: EMO_COLORS[e.emotion] || '#888',
+                            }}
+                          />
+                        ))}
+                      </div>
+                    )}
+                    <div className="domain-foot muted">
+                      最近活跃 {d.lastActive} · 域内关联 {d.edgeCount} 条
+                    </div>
+                  </>
+                ) : (
+                  <p className="muted" style={{ fontSize: 12, margin: 0 }}>
+                    这个板块还没有星星，去「记录星图」聊聊吧。
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
       {layout.nodes.length === 0 && (
         <div className="empty-state">
           {need > 0
