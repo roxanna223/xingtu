@@ -1,4 +1,4 @@
-import { readProfile, writeProfile, readDays, writeDays } from '@/lib/store'
+import { readProfile, writeProfile, readDays, writeDays, writeChats, defaultProfile } from '@/lib/store'
 import { cohortFor, starSignFor } from '@/lib/cohort'
 
 // 本地模拟注册/登录（无数据库，写 profile.json）
@@ -16,23 +16,12 @@ export async function POST(req) {
 
   if (action === 'register') {
     if (p.user.username && p.user.username !== name) {
-      // 本地模拟环境：换账号即重置画像与日记
-      const fresh = {
-        user: { username: name, personaTier: 'logical' },
-        topics: [],
-        edges: [],
-        feedbackLog: [],
-        emotionSeries: [],
-        lastReport: null,
-        reports: {},
-        periodReports: {},
-        behavior: null,
-        openerIdx: 0,
-        lastOpeners: [],
-        adaptLog: [],
-      }
-      Object.assign(p, fresh)
+      // 本地模拟环境：换账号即全量重置画像与日记。
+      // 用 defaultProfile 重建并清空全部旧键，避免 tests/generating/crisisFlag 等后加字段残留到新账号
+      Object.keys(p).forEach((k) => delete p[k])
+      Object.assign(p, defaultProfile())
       writeDays([])
+      writeChats([]) // P0-1：换账号同步清空对话存档，避免旧账号对话残留
     }
     p.user.username = name
     p.user.passwordHash = 'local-' + Buffer.from(String(password)).toString('base64').slice(0, 12)

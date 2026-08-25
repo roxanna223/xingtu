@@ -3,6 +3,7 @@ import { generateReport, generatePeriodReport, PERIOD_CACHE_VERSION } from '@/li
 import { emotionCountsFromTrack, mixEmotionColors, parseTrackText } from '@/lib/colors'
 import { detectIntent, patternTopics } from '@/lib/intent'
 import { aggregateRange, currentOrLastComplete, RANGES } from '@/lib/period'
+import { consumePendingChats } from '@/lib/chatStore'
 
 export async function GET(req) {
   try {
@@ -12,7 +13,12 @@ export async function GET(req) {
     const range = url.searchParams.get('range')
     const refresh = url.searchParams.get('refresh') === '1'
 
-    const p = readProfile()
+    // P0-1：报告生成前把未抽取的对话并入画像，报告才完整（无待处理时近乎零成本）
+    let p = readProfile()
+    if (!p.generating) {
+      await consumePendingChats()
+      p = readProfile()
+    }
     const days = readDays()
     const dates = days.map((d) => d.date)
     const lastDay = dates.at(-1) || ''

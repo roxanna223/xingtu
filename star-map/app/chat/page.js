@@ -15,6 +15,7 @@ export default function StarChatPage() {
   const [micOn, setMicOn] = useState(false)
   const recRef = useRef(null)
   const endRef = useRef(null)
+  const sessionRef = useRef(null) // 服务端持久化会话，刷新可恢复
 
   function showToast(msg) {
     setToast(msg)
@@ -41,24 +42,48 @@ export default function StarChatPage() {
     setSBusy(false)
   }
 
+  async function restoreChat() {
+    try {
+      const r = await fetch('/api/star', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode: 'restore' }),
+      })
+      const d = await r.json()
+      if (d.history && d.history.length) {
+        sessionRef.current = d.sessionId
+        setMessages(
+          d.history.map((m) => ({ role: m.role, content: m.content, quiz: m.quiz || null, result: m.result || null }))
+        )
+        const lastQuiz = [...d.history].reverse().find((m) => m.quiz)?.quiz || null
+        setQuiz(lastQuiz)
+      }
+    } catch {
+      /* 恢复失败不阻塞 */
+    }
+  }
+
   useEffect(() => {
     fetchSuggestions()
+    restoreChat()
   }, [])
 
   async function send(text) {
     if (!text || !text.trim() || busy) return
-    const next = [...messages, { role: 'user', content: text.trim() }]
-    setMessages(next)
+    setMessages((m) => [...m, { role: 'user', content: text.trim() }])
     setInput('')
     setBusy(true)
     try {
       const r = await fetch('/api/star', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: next, quiz }),
+        body: JSON.stringify({ mode: 'chat', message: text.trim(), quiz, sessionId: sessionRef.current }),
       })
       const d = await r.json()
-      setMessages((m) => [...m, { role: 'assistant', content: d.reply || '', quiz: d.quiz || null, result: d.result || null }])
+      if (d.sessionId) sessionRef.current = d.sessionId
+      if (d.reply) {
+        setMessages((m) => [...m, { role: 'assistant', content: d.reply, quiz: d.quiz || null, result: d.result || null }])
+      }
       setQuiz(d.quiz || null)
       if (d.result) showToast('已存入测试报告 📋')
     } catch {

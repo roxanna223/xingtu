@@ -4,6 +4,7 @@ import path from 'node:path'
 const DATA_DIR = path.join(process.cwd(), 'data')
 const PROFILE_PATH = path.join(DATA_DIR, 'profile.json')
 const DAYS_PATH = path.join(DATA_DIR, 'days.json')
+const CHATS_PATH = path.join(DATA_DIR, 'chats.json')
 
 function ensure() {
   fs.mkdirSync(DATA_DIR, { recursive: true })
@@ -58,4 +59,20 @@ export function readDays() {
 export function writeDays(d) {
   ensure()
   fs.writeFileSync(DAYS_PATH, JSON.stringify(d, null, 2), 'utf8')
+}
+
+// 对话原文持久化（P0-1）：记录页对话与小星对话的全部消息落盘，供恢复与抽取入画像
+export function readChats() {
+  ensure()
+  if (!fs.existsSync(CHATS_PATH)) return []
+  try {
+    return JSON.parse(fs.readFileSync(CHATS_PATH, 'utf8'))
+  } catch {
+    return []
+  }
+}
+
+export function writeChats(c) {
+  ensure()
+  fs.writeFileSync(CHATS_PATH, JSON.stringify(c, null, 2), 'utf8')
 }

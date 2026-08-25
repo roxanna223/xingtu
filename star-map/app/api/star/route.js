@@ -1,21 +1,25 @@
-import { readProfile, writeProfile } from '@/lib/store'
+import { readProfile, writeProfile, readChats } from '@/lib/store'
 import { callLLM, parseJson, mockStar, mockSuggestions, buildProfileSummary } from '@/lib/engine'
 import { starMessages, suggestionsMessages } from '@/lib/prompts'
 import { updateBehavior } from '@/lib/behavior'
+import {
+  saveSession,
+  getSession,
+  newSession,
+  findRestorable,
+  appendMessage,
+  isControlMessage,
+} from '@/lib/chatStore'
 
 export async function POST(req) {
   const body = await req.json()
-  const { messages = [], quiz = null, mode = 'chat' } = body || {}
+  const { message = '', quiz = null, mode = 'chat', sessionId = null } = body || {}
+  const text = String(message || '').trim()
 
   const p = readProfile()
-
-  // 行为信号采集（小星对话同样计入自迭代数据）
-  updateBehavior(p, messages.filter((m) => m.role === 'user').map((m) => m.content))
-  writeProfile(p)
-
   const summary = buildProfileSummary(p)
 
-  // 快速开始提示生成
+  // 快速开始提示生成（不落盘）
   if (mode === 'suggestions') {
     if (!process.env.DEEPSEEK_API_KEY) return Response.json(mockSuggestions(summary))
     try {
@@ -30,13 +34,40 @@ export async function POST(req) {
     return Response.json(mockSuggestions(summary))
   }
 
-  // 对话 / 测验
+  // 页面加载恢复：找回最近一次未结束的小星对话（刷新不再丢失）
+  if (mode === 'restore') {
+    const s = findRestorable(readChats(), 'star')
+    if (s) return Response.json({ history: s.messages, sessionId: s.id })
+    return Response.json({ history: null, sessionId: null })
+  }
+
+  /* ---------- 对话 / 测验 ---------- */
+  let chats = readChats()
+  let session = sessionId ? getSession(chats, sessionId) : null
+
+  if (text) {
+    if (!session) {
+      session = newSession('star')
+      chats = saveSession(chats, session)
+    }
+    appendMessage(session, { role: 'user', content: text })
+    chats = saveSession(chats, session)
+    if (!isControlMessage(text)) updateBehavior(p, [text])
+    writeProfile(p)
+  }
+
+  if (!session) {
+    // 无输入也无会话：等待用户开口，不生成回复
+    return Response.json({ reply: '', sessionId: null })
+  }
+
+  const history = session.messages.map((m) => ({ role: m.role, content: m.content }))
   let out
   if (!process.env.DEEPSEEK_API_KEY) {
-    out = mockStar(messages, quiz, summary)
+    out = mockStar(history, quiz, summary)
   } else {
     try {
-      const raw = await callLLM(starMessages({ history: messages, quiz, profileSummary: summary }))
+      const raw = await callLLM(starMessages({ history, quiz, profileSummary: summary }))
       const parsed = parseJson(raw)
       out = {
         reply: parsed?.reply || '嗯，我在。',
@@ -45,9 +76,23 @@ export async function POST(req) {
       }
     } catch (e) {
       console.warn('[star] 对话失败，降级 Mock：', e.message)
-      out = mockStar(messages, quiz, summary)
+      out = mockStar(history, quiz, summary)
     }
   }
+
+  // 能量意图确定性兜底：用户问了能量/精力方向，但模型只回了对话、没产出结构化 result 时，
+  // 用规则版补一张"今日能量提示"卡（体验不依赖单次 LLM 的输出稳定性）
+  if (!out.quiz && !out.result && /能量|运势|状态|精力/.test(text)) {
+    out = mockStar(history, quiz, summary)
+  }
+
+  appendMessage(session, {
+    role: 'assistant',
+    content: out.reply || '',
+    quiz: out.quiz || undefined,
+    result: out.result || undefined,
+  })
+  chats = saveSession(chats, session)
 
   // 测验结果自动存入测试报告
   if (out.result) {
@@ -56,5 +101,5 @@ export async function POST(req) {
     writeProfile(p)
   }
 
-  return Response.json(out)
+  return Response.json({ ...out, sessionId: session.id })
 }

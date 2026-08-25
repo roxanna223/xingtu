@@ -374,7 +374,7 @@ export function mockStar(history = [], quiz = null, summary = {}) {
     /花|花朵/.test(lastUser) ? 'flower'
     : /动物|小动物/.test(lastUser) ? 'animal'
     : /职业|工作方向/.test(lastUser) ? 'career'
-    : /能量|运势|状态/.test(lastUser) ? 'energy'
+    : /能量|运势|状态|精力/.test(lastUser) ? 'energy'
     : null
 
   if (!quiz && intent) {

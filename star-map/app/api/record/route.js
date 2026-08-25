@@ -1,11 +1,12 @@
-import { readProfile, writeProfile, readDays, writeDays } from '@/lib/store'
+import { readProfile, writeProfile, readDays, writeDays, readChats } from '@/lib/store'
 import { extractAndMerge, generateReport } from '@/lib/engine'
 import { updateBehavior } from '@/lib/behavior'
 import { detectIntent, patternTopics } from '@/lib/intent'
+import { markSessionCovered, consumePendingChats } from '@/lib/chatStore'
 
 export async function POST(req) {
   const body = await req.json()
-  const { date, freeText, q1 = '', q2 = '', q3 = '' } = body || {}
+  const { date, freeText, q1 = '', q2 = '', q3 = '', sessionId = null } = body || {}
   if (!date || !freeText || !String(freeText).trim()) {
     return Response.json({ error: 'date 与 freeText 必填' }, { status: 400 })
   }
@@ -24,9 +25,15 @@ export async function POST(req) {
   days.sort((a, b) => a.date.localeCompare(b.date))
   writeDays(days)
 
-  // 后台自动生成当日日报（不阻塞保存响应；生成期间 /api/report 返回 generating 状态）
+  // P0-1：本次保存来自对话 → 该会话内容已通过上面的抽取进入画像，标记 covered 防重复抽取
+  if (sessionId) {
+    markSessionCovered(readChats(), sessionId)
+  }
+
+  // 后台：① 把其余未抽取的对话并入画像 → ② 生成当日日报（同一条串行链，避免并发写画像）
   ;(async () => {
     try {
+      await consumePendingChats()
       const latest = readProfile()
       const lastD = readDays().at(-1)
       const track = lastD?.q2 || ''

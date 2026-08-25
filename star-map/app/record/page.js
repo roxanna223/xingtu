@@ -41,6 +41,11 @@ export default function RecordPage() {
   const recRef = useRef(null)
   const autoSpeakRef = useRef(false)
   autoSpeakRef.current = autoSpeak
+  const sessionRef = useRef(null) // 对话会话 ID（服务端持久化，刷新可恢复）
+  const messagesRef = useRef([])
+  useEffect(() => {
+    messagesRef.current = messages
+  }, [messages])
 
   // 快速记录模式
   const [onboard, setOnboard] = useState({ birthYearMonth: '', careerStage: '', worries: ['', '', ''] })
@@ -65,19 +70,36 @@ export default function RecordPage() {
 
   /* ---------- 对话模式 ---------- */
 
-  async function chat(messagesToSend, draftToSend) {
+  // messageText：本轮新发送的用户消息；为空表示页面加载/开场/恢复请求
+  async function chat(messageText, draftToSend, opts = {}) {
     setChatBusy(true)
     try {
       const r = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: messagesToSend, draft: draftToSend }),
+        body: JSON.stringify({
+          message: messageText || '',
+          draft: draftToSend,
+          sessionId: sessionRef.current,
+          fresh: !!opts.fresh,
+        }),
       })
       const data = await r.json()
+      if (data.sessionId) sessionRef.current = data.sessionId
+      if (data.covered) {
+        // 今天已保存过记录
+        setSaved(true)
+        return data
+      }
+      if (data.history) {
+        // 刷新恢复：还原完整对话
+        setMessages(data.history.map((m) => ({ role: m.role, content: m.content })))
+        return data
+      }
       if (data.reply) {
+        const idx = messagesRef.current.length
         setMessages((m) => [...m, { role: 'assistant', content: data.reply }])
         if (autoSpeakRef.current) {
-          const idx = messagesToSend.length + 1
           setSpeakingIdx(idx)
           speak(data.reply)
         }
@@ -91,7 +113,7 @@ export default function RecordPage() {
 
   useEffect(() => {
     if (tab === 'chat' && messages.length === 0 && status) {
-      chat([], null)
+      chat('', null)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab, status])
@@ -100,17 +122,15 @@ export default function RecordPage() {
     e?.preventDefault()
     const text = input.trim()
     if (!text || chatBusy) return
-    const next = [...messages, { role: 'user', content: text }]
-    setMessages(next)
+    setMessages((m) => [...m, { role: 'user', content: text }])
     setInput('')
-    await chat(next, draft)
+    await chat(text, draft)
   }
 
   async function askSummarize() {
     if (chatBusy || !messages.some((m) => m.role === 'user')) return
-    const next = [...messages, { role: 'user', content: '[帮我梳理今天]' }]
-    setMessages(next)
-    await chat(next, draft)
+    setMessages((m) => [...m, { role: 'user', content: '[帮我梳理今天]' }])
+    await chat('[帮我梳理今天]', draft)
   }
 
   async function toggleMic() {
@@ -189,6 +209,7 @@ export default function RecordPage() {
         q1: draft?.q1 || '',
         q2: trackToText(draft?.q2),
         q3: draft?.q3 || '',
+        sessionId: sessionRef.current,
       }),
     })
     const data = await r.json()
@@ -307,7 +328,7 @@ export default function RecordPage() {
               <br />
               <Link href="/star-map" className="muted">去看看星图 →</Link>
               <br /><br />
-              <button className="btn btn-ghost" onClick={() => { setSaved(false); setMessages([]); chat([], null) }}>再聊一会儿</button>
+              <button className="btn btn-ghost" onClick={() => { setSaved(false); setMessages([]); sessionRef.current = null; chat('', null, { fresh: true }) }}>再聊一会儿</button>
             </div>
           ) : (
             <>
