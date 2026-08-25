@@ -38,6 +38,10 @@ export default function NavBar() {
             {user && (
               <>
                 <span>{user.starSymbol ? `${user.starSymbol} ` : '✦ '}<b>{user.username}</b></span>
+                {user.role === 'admin' && (
+                  <Link href="/admin" className="login-skip" style={{ textDecoration: 'none' }}>管理</Link>
+                )}
+                <Link href="/settings" className="login-skip" style={{ textDecoration: 'none' }}>设置</Link>
                 <button className="login-skip" onClick={logout}>退出</button>
               </>
             )}

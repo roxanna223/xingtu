@@ -1,9 +1,15 @@
 # 运行时产物
 simulation-log.txt
 
-# 运行时数据备份（含本地模拟账号与日记内容，不入库）
+# 运行时数据备份(含本地模拟账号与日记内容,不入库)
 data-backup-p01/
 
 # 服务器日志
 star-map/server.log
 star-map/server.err.log
+
+# 本地运维/部署临时文件(不入库)
+askpass.bat
+sshw.ps1
+star-map-release.tar.gz
+code1.txt

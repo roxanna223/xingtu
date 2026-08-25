@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url'
 import { readProfile, writeProfile, readDays, writeDays } from '../lib/store.js'
 import { extractAndMerge } from '../lib/engine.js'
 import { cohortFor } from '../lib/cohort.js'
+import { resolveUserId } from './lib-user.mjs'
 
 const envPath = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '.env')
 if (fs.existsSync(envPath)) {
@@ -37,7 +38,8 @@ const worries = [...md.matchAll(/^\s*\d\.\s*(.+)$/gm)]
   .filter((w) => w && !/^第?\s*\d+\s*件?$/.test(w))
   .slice(0, 3)
 
-const profile = readProfile()
+const userId = resolveUserId()
+const profile = readProfile(userId)
 if (!profile.user?.cohort?.birthYearMonth && birth) profile.user.cohort = cohortFor(birth)
 if (!profile.user.careerStage && stage) profile.user.careerStage = stage.slice(0, 20)
 
@@ -87,7 +89,7 @@ for (let i = 0; i < matches.length; i++) {
   records.push({ date, freeText, q1: q(1), q2: q(2), q3: q(3) })
 }
 
-const days = readDays()
+const days = readDays(userId)
 let imported = 0
 let fallbackCount = 0
 let cursor = 0
@@ -124,8 +126,8 @@ async function worker(id) {
 await Promise.all(Array.from({ length: CONCURRENCY }, (_, i) => worker(i + 1)))
 
 days.sort((a, b) => a.date.localeCompare(b.date))
-writeProfile(profile)
-writeDays(days)
+writeProfile(userId, profile)
+writeDays(userId, days)
 
 console.log('\n完成。')
 console.log(JSON.stringify({

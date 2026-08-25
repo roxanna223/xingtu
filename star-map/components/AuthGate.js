@@ -21,6 +21,16 @@ export default function AuthGate({ children }) {
       })
   }, [pathname])
 
+  // 埋点:页面浏览(路由变化上报;管理员操作由服务端过滤不记录)
+  useEffect(() => {
+    if (pathname === '/login') return
+    fetch('/api/track', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ event: 'page_view', path: pathname }),
+    }).catch(() => {})
+  }, [pathname])
+
   if (pathname === '/login') return children
   if (!ok) {
     return (

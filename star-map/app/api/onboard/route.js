@@ -1,12 +1,18 @@
 import { readProfile, writeProfile } from '@/lib/store'
 import { cohortFor } from '@/lib/cohort'
+import { requireAuth, assertSameOrigin, readJsonBody } from '@/lib/auth'
 
 export async function POST(req) {
-  const body = await req.json()
-  const { birthYearMonth, careerStage, worries = [] } = body || {}
+  const auth = requireAuth(req)
+  if (!auth.user) return auth.response
+  const userId = auth.user.id
+  if (!assertSameOrigin(req)) return Response.json({ error: '跨站请求被拒绝' }, { status: 403 })
+  const body = await readJsonBody(req)
+  if (body.__error) return Response.json({ error: body.__error }, { status: 400 })
+  const { birthYearMonth, careerStage, worries = [] } = body
   if (!birthYearMonth) return Response.json({ error: 'birthYearMonth 必填' }, { status: 400 })
 
-  const p = readProfile()
+  const p = readProfile(userId)
   p.user.cohort = cohortFor(birthYearMonth)
   p.user.careerStage = careerStage || ''
   const t = new Date().toISOString().slice(0, 10)
@@ -25,6 +31,6 @@ export async function POST(req) {
       })
     }
   }
-  writeProfile(p)
+  writeProfile(userId, p)
   return Response.json({ ok: true, cohort: p.user.cohort })
 }

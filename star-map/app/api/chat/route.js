@@ -3,6 +3,8 @@ import { callLLM, parseJson, mockChat } from '@/lib/engine'
 import { chatMessages } from '@/lib/prompts'
 import { OPENERS } from '@/lib/openers'
 import { updateBehavior, behaviorSummary } from '@/lib/behavior'
+import { requireAuth, assertSameOrigin, readJsonBody } from '@/lib/auth'
+import { trackReq } from '@/lib/track'
 import {
   saveSession,
   getSession,
@@ -13,13 +15,18 @@ import {
 } from '@/lib/chatStore'
 
 export async function POST(req) {
-  const body = await req.json()
-  const { message = '', draft = null, sessionId = null, fresh = false } = body || {}
+  const auth = requireAuth(req)
+  if (!auth.user) return auth.response
+  const userId = auth.user.id
+  if (!assertSameOrigin(req)) return Response.json({ error: '跨站请求被拒绝' }, { status: 403 })
+  const body = await readJsonBody(req)
+  if (body.__error) return Response.json({ error: body.__error }, { status: 400 })
+  const { message = '', draft = null, sessionId = null, fresh = false } = body
   const text = String(message || '').trim()
 
-  const p = readProfile()
-  const days = readDays()
-  let chats = readChats()
+  const p = readProfile(userId)
+  const days = readDays(userId)
+  let chats = readChats(userId)
   const last = days.at(-1)
   const lastRecord = last ? { date: last.date, q1: last.q1 } : null
 
@@ -41,7 +48,7 @@ export async function POST(req) {
         }
       }
       session = newSession('record')
-      chats = saveSession(chats, session)
+      chats = saveSession(userId, chats, session)
     }
 
     let reply = ''
@@ -50,7 +57,7 @@ export async function POST(req) {
       const opener = OPENERS[(p.openerIdx || 0) % OPENERS.length]
       p.openerIdx = (p.openerIdx || 0) + 1
       p.lastOpeners = [...(p.lastOpeners || []), opener.frame].slice(-3)
-      writeProfile(p)
+      writeProfile(userId, p)
       const behavior = behaviorSummary(p)
       if (!process.env.DEEPSEEK_API_KEY) {
         reply = mockChat([], null, opener).reply
@@ -65,7 +72,8 @@ export async function POST(req) {
         }
       }
       appendMessage(session, { role: 'assistant', content: reply })
-      chats = saveSession(chats, session)
+      // LLM await 之后重读 chats(清单 A4):避免覆盖并发请求刚写入的会话
+      chats = saveSession(userId, readChats(userId), session)
     }
     return Response.json({ reply, sessionId: session.id, covered: false })
   }
@@ -73,13 +81,17 @@ export async function POST(req) {
   /* ---------- 正常对话：新消息先落盘，再生成回复 ---------- */
   if (!session) {
     session = newSession('record')
-    chats = saveSession(chats, session)
+    chats = saveSession(userId, chats, session)
   }
   appendMessage(session, { role: 'user', content: text })
-  chats = saveSession(chats, session)
+  chats = saveSession(userId, chats, session)
 
-  if (!isControlMessage(text)) updateBehavior(p, [text])
-  writeProfile(p)
+  if (!isControlMessage(text)) {
+    // 同步段内重读-更新-写回,与并发请求不会交错(清单 A4)
+    const freshP = readProfile(userId)
+    updateBehavior(freshP, [text])
+    writeProfile(userId, freshP)
+  }
   const behavior = behaviorSummary(p)
 
   const history = session.messages.map((m) => ({ role: m.role, content: m.content }))
@@ -107,7 +119,8 @@ export async function POST(req) {
     }
   }
   appendMessage(session, { role: 'assistant', content: reply })
-  chats = saveSession(chats, session)
+  // LLM await 之后重读 chats(清单 A4):避免覆盖并发请求刚写入的会话
+  chats = saveSession(userId, readChats(userId), session)
 
   return Response.json({ reply, draft: nextDraft, done, sessionId: session.id })
 }

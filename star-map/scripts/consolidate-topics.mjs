@@ -18,7 +18,8 @@ if (fs.existsSync(envPath)) {
 }
 
 const dry = process.argv[2] === 'dry'
-const profile = readProfile()
+const userId = resolveUserId()
+const profile = readProfile(userId)
 const topics = profile.topics || []
 
 const sys = `你是「星图」产品的画像整理助手。下面是一个用户长期画像的主题列表（每条为 id|名称，同一生活域内）。这些主题来自每天的记录抽取，因为归并规则严格，出现了严重碎片化：同一个对象/同一件事/同一活动被拆成了多条。
@@ -180,7 +181,7 @@ for (const e of profile.edges || []) {
 }
 profile.edges = newEdges
 
-writeProfile(profile)
+writeProfile(userId, profile)
 console.log(`\n归并完成：主题 ${topics.length} → ${profile.topics.length}，边 ${(profile.edges || []).length}。`)
 console.log('高频主题 Top 15：')
 console.log(

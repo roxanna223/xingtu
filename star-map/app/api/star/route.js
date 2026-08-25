@@ -2,6 +2,8 @@ import { readProfile, writeProfile, readChats } from '@/lib/store'
 import { callLLM, parseJson, mockStar, mockSuggestions, buildProfileSummary } from '@/lib/engine'
 import { starMessages, suggestionsMessages } from '@/lib/prompts'
 import { updateBehavior } from '@/lib/behavior'
+import { requireAuth, assertSameOrigin, readJsonBody } from '@/lib/auth'
+import { trackReq } from '@/lib/track'
 import {
   saveSession,
   getSession,
@@ -12,11 +14,17 @@ import {
 } from '@/lib/chatStore'
 
 export async function POST(req) {
-  const body = await req.json()
-  const { message = '', quiz = null, mode = 'chat', sessionId = null } = body || {}
-  const text = String(message || '').trim()
+  const auth = requireAuth(req)
+  if (!auth.user) return auth.response
+  const userId = auth.user.id
+  if (!assertSameOrigin(req)) return Response.json({ error: '跨站请求被拒绝' }, { status: 403 })
+  const body = await readJsonBody(req)
+  if (body.__error) return Response.json({ error: body.__error }, { status: 400 })
+  const { message = '', quiz = null, mode = 'chat', sessionId = null } = body
+  const text = String(message || '').trim().slice(0, 2000)
+  if (text) trackReq(req, 'chat_message', '/api/star')
 
-  const p = readProfile()
+  const p = readProfile(userId)
   const summary = buildProfileSummary(p)
 
   // 快速开始提示生成（不落盘）
@@ -36,24 +44,24 @@ export async function POST(req) {
 
   // 页面加载恢复：找回最近一次未结束的小星对话（刷新不再丢失）
   if (mode === 'restore') {
-    const s = findRestorable(readChats(), 'star')
+    const s = findRestorable(readChats(userId), 'star')
     if (s) return Response.json({ history: s.messages, sessionId: s.id })
     return Response.json({ history: null, sessionId: null })
   }
 
   /* ---------- 对话 / 测验 ---------- */
-  let chats = readChats()
+  let chats = readChats(userId)
   let session = sessionId ? getSession(chats, sessionId) : null
 
   if (text) {
     if (!session) {
       session = newSession('star')
-      chats = saveSession(chats, session)
+      chats = saveSession(userId, chats, session)
     }
     appendMessage(session, { role: 'user', content: text })
-    chats = saveSession(chats, session)
+    chats = saveSession(userId, chats, session)
     if (!isControlMessage(text)) updateBehavior(p, [text])
-    writeProfile(p)
+    writeProfile(userId, p)
   }
 
   if (!session) {
@@ -92,13 +100,16 @@ export async function POST(req) {
     quiz: out.quiz || undefined,
     result: out.result || undefined,
   })
-  chats = saveSession(chats, session)
+  // LLM await 之后重读 chats(清单 A4):避免覆盖并发请求刚写入的会话
+  chats = saveSession(userId, readChats(userId), session)
 
-  // 测验结果自动存入测试报告
+  // 测验结果自动存入测试报告(同样重读 profile 再写)
   if (out.result) {
-    p.tests = p.tests || []
-    p.tests.unshift({ date: new Date().toISOString().slice(0, 10), ...out.result })
-    writeProfile(p)
+    const fresh = readProfile(userId)
+    fresh.tests = fresh.tests || []
+    fresh.tests.unshift({ date: new Date().toISOString().slice(0, 10), ...out.result })
+    writeProfile(userId, fresh)
+    trackReq(req, 'quiz_done', '/api/star', { quizId: out.result?.quizId || null })
   }
 
   return Response.json({ ...out, sessionId: session.id })

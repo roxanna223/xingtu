@@ -1,10 +1,16 @@
 import { readProfile, writeProfile } from '@/lib/store'
+import { requireAuth, assertSameOrigin, readJsonBody } from '@/lib/auth'
 
 // 手动矫正星图归类：拆出独立星星 / 合并到另一颗星星
 export async function POST(req) {
-  const body = await req.json()
-  const { action, topicId, quote, newName, toId } = body || {}
-  const p = readProfile()
+  const auth = requireAuth(req)
+  if (!auth.user) return auth.response
+  const userId = auth.user.id
+  if (!assertSameOrigin(req)) return Response.json({ error: '跨站请求被拒绝' }, { status: 403 })
+  const body = await readJsonBody(req)
+  if (body.__error) return Response.json({ error: body.__error }, { status: 400 })
+  const { action, topicId, quote, newName, toId } = body
+  const p = readProfile(userId)
   const t = p.topics.find((x) => x.id === topicId)
   if (!t) return Response.json({ error: '星星不存在' }, { status: 404 })
 
@@ -43,12 +49,12 @@ export async function POST(req) {
         return true
       })
       p.topics = p.topics.filter((x) => x.id !== t.id)
-      writeProfile(p)
+      writeProfile(userId, p)
       return Response.json({ ok: true, newTopic: nt, removedOriginal: true })
     }
 
     p.edges.push({ source: t.id, target: nt.id, weight: 0.3 })
-    writeProfile(p)
+    writeProfile(userId, p)
     return Response.json({ ok: true, newTopic: nt })
   }
 
@@ -56,7 +62,7 @@ export async function POST(req) {
     const name = String(newName || '').trim()
     if (!name) return Response.json({ error: '名字不能为空' }, { status: 400 })
     t.name = name.slice(0, 20)
-    writeProfile(p)
+    writeProfile(userId, p)
     return Response.json({ ok: true, name: t.name })
   }
 
@@ -88,7 +94,7 @@ export async function POST(req) {
       return true
     })
     p.topics = p.topics.filter((x) => x.id !== t.id)
-    writeProfile(p)
+    writeProfile(userId, p)
     return Response.json({ ok: true, mergedInto: target.name })
   }
 

@@ -910,3 +910,28 @@ select option { background: var(--panel); color: var(--txt); }
   .mood-card { flex-direction: column; align-items: flex-start; }
   .mood-card-img { width: 100%; height: auto; }
 }
+
+/* ============================================================
+   管理后台 / 设置页(多用户改造 v2)
+   ============================================================ */
+.stat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+.stat-box { background: var(--panel-3); border: 2px solid var(--line-dim); padding: 12px; text-align: center; }
+.stat-box b { display: block; font-size: 22px; color: var(--accent, #ffd166); margin-bottom: 4px; }
+.stat-box span { font-size: 12px; color: var(--txt-dim, #9aa0d8); }
+.bar-row { display: flex; gap: 6px; align-items: flex-end; height: 90px; padding: 8px 0; }
+.bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 4px; min-width: 0; }
+.bar { width: 60%; background: var(--panel-2); border: 1px solid var(--line-dim); min-height: 4px; }
+.bar-green { background: #3fae7e; border-color: #7de0b4; }
+.bar-col span { font-size: 10px; color: var(--txt-dim, #9aa0d8); white-space: nowrap; }
+.admin-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.admin-table th, .admin-table td { border: 1px solid var(--line-dim); padding: 6px 8px; text-align: left; }
+.admin-table th { background: var(--panel-3); }
+.code-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+.code-chip { font-family: monospace; font-size: 15px; letter-spacing: 2px; background: var(--panel-3); color: var(--accent, #ffd166); border: 2px solid var(--line-dim); padding: 6px 12px; cursor: pointer; }
+.code-chip:hover { border-color: var(--line); }
+.kv-list { display: flex; flex-direction: column; gap: 6px; }
+.kv { display: flex; justify-content: space-between; border-bottom: 1px dashed var(--line-dim); padding: 6px 2px; font-size: 14px; }
+.kv span { color: var(--txt-dim, #9aa0d8); }
+.danger-zone { border-color: #c0504d !important; }
+.btn-danger { background: #8a2f2c !important; }
+.pill { background: var(--panel-2); border: 2px solid var(--line-dim); padding: 6px 14px; font-size: 13px; }

@@ -37,6 +37,7 @@ export default function LoginPage() {
   const [mode, setMode] = useState('register')
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
+  const [inviteCode, setInviteCode] = useState('')
   const [birthDate, setBirthDate] = useState('')
   const [wheelOpen, setWheelOpen] = useState(true)
   const [busy, setBusy] = useState(false)
@@ -51,7 +52,7 @@ export default function LoginPage() {
     const r = await fetch('/api/auth', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: mode, username, password, birthDate }),
+      body: JSON.stringify({ action: mode, username, password, inviteCode, birthDate }),
     })
     const data = await r.json()
     setBusy(false)
@@ -85,12 +86,19 @@ export default function LoginPage() {
           <form onSubmit={submit}>
             <div className="field">
               <label>昵称</label>
-              <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} placeholder="怎么称呼你？" autoFocus required />
+              <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} placeholder="怎么称呼你？" autoFocus required minLength={2} maxLength={20} />
             </div>
             <div className="field">
               <label>密码</label>
-              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="本地模拟，不会上传" required />
+              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder={mode === 'register' ? '至少 8 位，只保存在你的星图里' : '输入密码'} required minLength={mode === 'register' ? 8 : 1} />
             </div>
+
+            {mode === 'register' && (
+              <div className="field">
+                <label>邀请码</label>
+                <input type="text" value={inviteCode} onChange={(e) => setInviteCode(e.target.value)} placeholder="邀请制注册，向管理员索取邀请码" required maxLength={16} style={{ textTransform: 'uppercase' }} />
+              </div>
+            )}
 
             {mode === 'register' && (
               <div className="field">

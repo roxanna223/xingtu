@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url'
 import { readProfile, writeProfile, readDays, writeDays } from '../lib/store.js'
 import { extractAndMerge } from '../lib/engine.js'
 import { cohortFor } from '../lib/cohort.js'
+import { resolveUserId } from './lib-user.mjs'
 
 // 极简 .env 加载（脚本不经 Next.js 启动，不会自动读 .env）
 const envPath = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '.env')
@@ -37,7 +38,8 @@ const worries = [...md.matchAll(/^\s*\d\.\s*(.+)$/gm)]
   .filter((w) => w && !/^第?\s*\d+\s*件?$/.test(w))
   .slice(0, 3)
 
-const profile = readProfile()
+const userId = resolveUserId()
+const profile = readProfile(userId)
 if (!profile.user?.cohort?.birthYearMonth && birth) profile.user.cohort = cohortFor(birth)
 if (!profile.user.careerStage && stage) profile.user.careerStage = stage.slice(0, 20)
 
@@ -64,7 +66,7 @@ for (const w of worries) {
   }
 }
 
-const days = readDays()
+const days = readDays(userId)
 let imported = 0
 
 for (let i = 0; i < matches.length; i++) {
@@ -99,8 +101,8 @@ for (let i = 0; i < matches.length; i++) {
 }
 
 days.sort((a, b) => a.date.localeCompare(b.date))
-writeProfile(profile)
-writeDays(days)
+writeProfile(userId, profile)
+writeDays(userId, days)
 
 console.log('\n完成。')
 console.log(JSON.stringify({

@@ -1,14 +1,18 @@
 import { readProfile, readDays } from '@/lib/store'
 import { mixEmotionColors } from '@/lib/colors'
+import { requireAuth } from '@/lib/auth'
 
 const DAY = 86400000
 const DOMAINS = ['事业', '关系', '自我', '健康', '财务', '成长']
 
 export async function GET(req) {
+  const auth = requireAuth(req)
+  if (!auth.user) return auth.response
+  const userId = auth.user.id
   const url = new URL(req.url)
   const asOf = url.searchParams.get('asOf')
-  const p = readProfile()
-  const days = readDays()
+  const p = readProfile(userId)
+  const days = readDays(userId)
   const dates = days.map((d) => d.date)
 
   const now = asOf ? new Date(`${asOf}T23:59:59`).getTime() : Date.now()

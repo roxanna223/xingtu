@@ -1,47 +1,123 @@
-import { readProfile, writeProfile, readDays, writeDays, writeChats, defaultProfile } from '@/lib/store'
-import { cohortFor, starSignFor } from '@/lib/cohort'
+import { findUserByUsername, createUser, isInviteAvailable, consumeInvite, deleteUserById, trackEvent } from '@/lib/store'
+import { starSignFor, cohortFor } from '@/lib/cohort'
+import {
+  hashPassword,
+  verifyPassword,
+  isLegacyHash,
+  createSessionToken,
+  serializeSessionCookie,
+  clientIp,
+  loginLockState,
+  recordLoginFailure,
+  clearLoginFailures,
+  assertSameOrigin,
+  readJsonBody,
+} from '@/lib/auth'
 
-// 本地模拟注册/登录（无数据库，写 profile.json）
-// 注册必填用户名/密码；出生日期选填——填写后对应星座，作为星图起点
+// 邀请制注册(方案 docs/15):新用户必须携带有效邀请码;邀请码一次性使用
+const NAME_RE = /^[\u4e00-\u9fa5A-Za-z0-9_-]{2,20}$/
+
 export async function POST(req) {
-  const body = await req.json()
-  const { action = 'register', username = '', password = '', birthDate = '' } = body || {}
-  const name = String(username).trim()
-  if (!name || !String(password).trim()) {
-    return Response.json({ error: '用户名与密码必填' }, { status: 400 })
+  // CSRF:跨站请求拒绝
+  if (!assertSameOrigin(req)) {
+    return Response.json({ error: '跨站请求被拒绝' }, { status: 403 })
   }
 
-  const p = readProfile()
-  p.user = p.user || {}
+  const body = await readJsonBody(req)
+  if (body.__error) return Response.json({ error: body.__error }, { status: 400 })
+  const { action = 'register', username = '', password = '', birthDate = '', inviteCode = '' } = body
+
+  const name = String(username).trim()
+  const ip = clientIp(req)
+
+  // 双维度限流(IP + 用户名):任一维度锁定则拒绝
+  const lock = loginLockState(ip, '') || (name ? loginLockState('', name) : null)
+  if (lock) {
+    return Response.json({ error: `尝试次数过多，请 ${lock.retryAfterSec} 秒后再试` }, { status: 429, headers: { 'Retry-After': String(lock.retryAfterSec) } })
+  }
+
+  if (!NAME_RE.test(name)) {
+    return Response.json({ error: '昵称需 2~20 位，仅限中文/字母/数字/下划线/连字符' }, { status: 400 })
+  }
+  const pw = String(password)
+  if (!pw) return Response.json({ error: '密码必填' }, { status: 400 })
 
   if (action === 'register') {
-    if (p.user.username && p.user.username !== name) {
-      // 本地模拟环境：换账号即全量重置画像与日记。
-      // 用 defaultProfile 重建并清空全部旧键，避免 tests/generating/crisisFlag 等后加字段残留到新账号
-      Object.keys(p).forEach((k) => delete p[k])
-      Object.assign(p, defaultProfile())
-      writeDays([])
-      writeChats([]) // P0-1：换账号同步清空对话存档，避免旧账号对话残留
+    if (pw.length < 8) return Response.json({ error: '密码至少 8 位' }, { status: 400 })
+    const code = String(inviteCode || '').trim()
+    if (!code) return Response.json({ error: '本产品为邀请制，注册需填写邀请码' }, { status: 400 })
+
+    // 昵称冲突优先提示(优于邀请码错误,避免用户修正邀请码后才被告知重名)
+    if (findUserByUsername(name)) {
+      recordLoginFailure(ip, name)
+      return Response.json({ error: '该昵称已被使用，换一个吧' }, { status: 409 })
     }
-    p.user.username = name
-    p.user.passwordHash = 'local-' + Buffer.from(String(password)).toString('base64').slice(0, 12)
-    if (birthDate) {
-      const sign = starSignFor(birthDate)
-      p.user.birthDate = String(birthDate).slice(0, 10)
-      p.user.starSign = sign ? sign.name : null
-      p.user.starSymbol = sign ? sign.symbol : null
-      if (!p.user.cohort) p.user.cohort = cohortFor(String(birthDate).slice(0, 7))
+    if (!isInviteAvailable(code)) {
+      recordLoginFailure(ip, name)
+      return Response.json({ error: '邀请码无效、已使用或已过期' }, { status: 400 })
     }
-  } else {
-    // 登录（模拟）：账号匹配即通过
-    if (p.user.username !== name) {
-      return Response.json({ error: '账号不存在，请先注册' }, { status: 401 })
+
+    let sign = null
+    if (birthDate) sign = starSignFor(birthDate)
+    const cohort = birthDate ? cohortFor(String(birthDate).slice(0, 7)) : null
+
+    try {
+      const userId = createUser({
+        username: name,
+        passwordHash: hashPassword(pw),
+        role: 'user',
+        birthDate: birthDate ? String(birthDate).slice(0, 10) : null,
+        starSign: sign ? sign.name : null,
+        starSymbol: sign ? sign.symbol : null,
+        cohort,
+      })
+      const consumed = consumeInvite(code, userId)
+      if (!consumed) {
+        // 极端并发下邀请码被抢:回滚用户创建
+        deleteUserById(userId)
+        recordLoginFailure(ip, name)
+        return Response.json({ error: '邀请码无效、已使用或已过期' }, { status: 400 })
+      }
+      clearLoginFailures(ip, name)
+      trackEvent(userId, 'register', '/api/auth', { inviteUsed: true })
+      const token = createSessionToken(name)
+      return new Response(
+        JSON.stringify({ ok: true, user: { username: name, starSign: sign ? sign.name : null, starSymbol: sign ? sign.symbol : null } }),
+        { status: 200, headers: { 'Content-Type': 'application/json', 'Set-Cookie': serializeSessionCookie(token) } }
+      )
+    } catch (e) {
+      if (String(e?.message || '').includes('UNIQUE')) {
+        recordLoginFailure(ip, name)
+        return Response.json({ error: '该昵称已被使用，换一个吧' }, { status: 409 })
+      }
+      console.error('[auth] 注册失败:', e)
+      return Response.json({ error: '注册失败，请稍后重试' }, { status: 500 })
     }
   }
 
-  writeProfile(p)
-  return Response.json({
-    ok: true,
-    user: { username: p.user.username, starSign: p.user.starSign || null, starSymbol: p.user.starSymbol || null },
-  })
+  // ---------- 登录:账号 + 密码双校验 ----------
+  const user = findUserByUsername(name)
+  if (!user) {
+    recordLoginFailure(ip, name)
+    return Response.json({ error: '账号不存在，请先注册' }, { status: 401 })
+  }
+  if (isLegacyHash(user.passwordHash)) {
+    recordLoginFailure(ip, name)
+    return Response.json({ error: '该账号为旧版本数据，密码已失效，请联系管理员重置' }, { status: 401 })
+  }
+  if (!verifyPassword(pw, user.passwordHash)) {
+    recordLoginFailure(ip, name)
+    return Response.json({ error: '密码不正确' }, { status: 401 })
+  }
+  clearLoginFailures(ip, name)
+  trackEvent(user.id, 'login', '/api/auth')
+
+  const token = createSessionToken(name)
+  return new Response(
+    JSON.stringify({
+      ok: true,
+      user: { username: name, starSign: user.starSign || null, starSymbol: user.starSymbol || null },
+    }),
+    { status: 200, headers: { 'Content-Type': 'application/json', 'Set-Cookie': serializeSessionCookie(token) } }
+  )
 }

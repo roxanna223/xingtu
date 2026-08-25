@@ -56,7 +56,7 @@ export function pendingChatCount(chats) {
   )
 }
 
-export function saveSession(chats, session) {
+export function saveSession(userId, chats, session) {
   const i = chats.findIndex((c) => c.id === session.id)
   if (i >= 0) chats[i] = session
   else chats.push(session)
@@ -64,12 +64,12 @@ export function saveSession(chats, session) {
   const pending = sorted.filter(hasPending)
   const rest = sorted.filter((c) => !hasPending(c)).slice(0, Math.max(0, MAX_SESSIONS - pending.length))
   const pruned = [...pending, ...rest]
-  writeChats(pruned)
+  writeChats(userId, pruned)
   return pruned
 }
 
 // 把某个会话标记为"已被记录覆盖"：内容已通过 /api/record 抽取，避免重复入画像
-export function markSessionCovered(chats, sessionId) {
+export function markSessionCovered(userId, chats, sessionId) {
   const s = chats.find((c) => c.id === sessionId)
   if (!s) return false
   s.covered = true
@@ -78,7 +78,7 @@ export function markSessionCovered(chats, sessionId) {
     m.extracted = true
     m.extractedAt = m.extractedAt || new Date().toISOString()
   }
-  writeChats(chats)
+  writeChats(userId, chats)
   return true
 }
 
@@ -124,17 +124,17 @@ export async function consumeChatsIntoProfile(chats, profile) {
 let consuming = false
 
 // 带互斥与落盘的消费入口：任何触发点调用都安全（并发时后到者直接跳过）
-export async function consumePendingChats() {
+export async function consumePendingChats(userId) {
   if (consuming) return { consumed: 0, skipped: true }
   consuming = true
   try {
-    const chats = readChats()
+    const chats = readChats(userId)
     if (!pendingChatCount(chats)) return { consumed: 0, skipped: false }
-    const profile = readProfile()
+    const profile = readProfile(userId)
     const r = await consumeChatsIntoProfile(chats, profile)
     if (r.extractedCount) {
-      writeChats(chats)
-      writeProfile(profile)
+      writeChats(userId, chats)
+      writeProfile(userId, profile)
     }
     return { consumed: r.extractedCount, dates: r.extractedDates }
   } catch (e) {
