@@ -6,6 +6,7 @@ import {
   isLegacyHash,
   createSessionToken,
   serializeSessionCookie,
+  reqIsHttps,
   clientIp,
   loginLockState,
   recordLoginFailure,
@@ -83,7 +84,7 @@ export async function POST(req) {
       const token = createSessionToken(name)
       return new Response(
         JSON.stringify({ ok: true, user: { username: name, starSign: sign ? sign.name : null, starSymbol: sign ? sign.symbol : null } }),
-        { status: 200, headers: { 'Content-Type': 'application/json', 'Set-Cookie': serializeSessionCookie(token) } }
+        { status: 200, headers: { 'Content-Type': 'application/json', 'Set-Cookie': serializeSessionCookie(token, reqIsHttps(req)) } }
       )
     } catch (e) {
       if (String(e?.message || '').includes('UNIQUE')) {
@@ -118,6 +119,6 @@ export async function POST(req) {
       ok: true,
       user: { username: name, starSign: user.starSign || null, starSymbol: user.starSymbol || null },
     }),
-    { status: 200, headers: { 'Content-Type': 'application/json', 'Set-Cookie': serializeSessionCookie(token) } }
+    { status: 200, headers: { 'Content-Type': 'application/json', 'Set-Cookie': serializeSessionCookie(token, reqIsHttps(req)) } }
   )
 }

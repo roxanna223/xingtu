@@ -1,7 +1,7 @@
 import crypto from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
-import { findUserByUsername } from './store'
+import { findUserByUsername, isTokenRevoked, revokeToken } from './store'
 
 /**
  * 公网安全基座(清单 A1/A2/A5):
@@ -81,6 +81,8 @@ export function verifySessionToken(token) {
   if (idx <= 0) return null
   const payload = token.slice(0, idx)
   const sig = token.slice(idx + 1)
+  // 登出吊销黑名单(2026-08-25:登出后 token 必须立即失效)
+  if (isTokenRevoked(sig)) return null
   const expect = crypto.createHmac('sha256', getSecret()).update(payload).digest('base64url')
   const a = Buffer.from(sig)
   const b = Buffer.from(expect)
@@ -92,7 +94,32 @@ export function verifySessionToken(token) {
   return payload.slice(0, sep)
 }
 
-export function serializeSessionCookie(token) {
+/** 登出/注销时吊销会话:token 写入黑名单直至其自然过期 */
+export function revokeSessionToken(token) {
+  if (typeof token !== 'string' || !token) return
+  const idx = token.lastIndexOf('.')
+  if (idx <= 0) return
+  const expStr = token.slice(token.indexOf('.') + 1, idx)
+  const exp = Number(expStr)
+  if (!Number.isFinite(exp)) return
+  revokeToken(token.slice(idx + 1), exp)
+}
+
+/** 请求是否为 HTTPS(Nginx 反代时带 X-Forwarded-Proto;直连 HTTP 为 false) */
+export function reqIsHttps(req) {
+  try {
+    return req?.headers?.get?.('x-forwarded-proto') === 'https'
+  } catch {
+    return false
+  }
+}
+
+/**
+ * 会话 cookie 序列化。
+ * Secure 仅在 HTTPS 请求时附加:HTTP 直连(IP:端口演示阶段)加 Secure 会导致浏览器拒绝存储,
+ * 登录后被 AuthGate 弹回注册页(2026-08-25 线上 bug)。
+ */
+export function serializeSessionCookie(token, secure = false) {
   const parts = [
     `${SESSION_COOKIE}=${token}`,
     'Path=/',
@@ -100,27 +127,32 @@ export function serializeSessionCookie(token) {
     'SameSite=Lax',
     `Max-Age=${SESSION_TTL_SECONDS}`,
   ]
-  if (process.env.NODE_ENV === 'production') parts.push('Secure')
+  if (secure) parts.push('Secure')
   return parts.join('; ')
 }
 
-export function clearSessionCookie() {
+export function clearSessionCookie(secure = false) {
   const parts = [`${SESSION_COOKIE}=`, 'Path=/', 'HttpOnly', 'SameSite=Lax', 'Max-Age=0']
-  if (process.env.NODE_ENV === 'production') parts.push('Secure')
+  if (secure) parts.push('Secure')
   return parts.join('; ')
 }
 
 /* ---------------- 请求级辅助(鉴权 / CSRF / IP / JSON) ---------------- */
 
-export function getSessionUser(req) {
+/** 从请求提取原始会话 token(无则 null) */
+export function getSessionToken(req) {
   try {
     const header = req.headers.get('cookie') || ''
     const m = header.match(/(?:^|;\s*)star_session=([^;]+)/)
-    if (!m) return null
-    return verifySessionToken(decodeURIComponent(m[1]))
+    return m ? decodeURIComponent(m[1]) : null
   } catch {
     return null
   }
+}
+
+export function getSessionUser(req) {
+  const token = getSessionToken(req)
+  return token ? verifySessionToken(token) : null
 }
 
 /** API 鉴权入口:未登录返回 401 响应;通过则返回 { user: {id,username,role,...} } */

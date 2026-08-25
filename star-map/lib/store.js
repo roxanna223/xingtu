@@ -320,6 +320,22 @@ export function consumeInvite(code, userId) {
   })
 }
 
+/* ---------------- 会话吊销(登出黑名单) ---------------- */
+
+/** 吊销会话 token(按签名段存储,过期后自动清理) */
+export function revokeToken(tokenSig, expiresAtMs) {
+  const d = getDB()
+  d.prepare('DELETE FROM revoked_tokens WHERE expires_at < ?').run(now())
+  d.prepare('INSERT OR REPLACE INTO revoked_tokens (token_sig, expires_at) VALUES (?, ?)').run(
+    String(tokenSig).slice(0, 128),
+    new Date(expiresAtMs).toISOString()
+  )
+}
+
+export function isTokenRevoked(tokenSig) {
+  return !!getDB().prepare('SELECT token_sig FROM revoked_tokens WHERE token_sig = ?').get(String(tokenSig).slice(0, 128))
+}
+
 /* ---------------- events(埋点) ---------------- */
 
 export function trackEvent(userId, event, path = '', detail = null) {

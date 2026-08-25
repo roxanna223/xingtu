@@ -1,5 +1,5 @@
 import { findUserByUsername, deleteUserById, readDays, readChats, trackEvent } from '@/lib/store'
-import { requireAuth, verifyPassword, clearSessionCookie, assertSameOrigin, readJsonBody } from '@/lib/auth'
+import { requireAuth, verifyPassword, clearSessionCookie, reqIsHttps, getSessionToken, revokeSessionToken, assertSameOrigin, readJsonBody } from '@/lib/auth'
 
 // 账号管理:信息查询 + 注销(方案 docs/15 §3)
 export async function GET(req) {
@@ -38,9 +38,11 @@ export async function POST(req) {
   const username = auth.user.username
   trackEvent(auth.user.id, 'account_deleted', '/api/account', { username })
   deleteUserById(auth.user.id)
+  const token = getSessionToken(req)
+  if (token) revokeSessionToken(token)
 
   return new Response(JSON.stringify({ ok: true }), {
     status: 200,
-    headers: { 'Content-Type': 'application/json', 'Set-Cookie': clearSessionCookie() },
+    headers: { 'Content-Type': 'application/json', 'Set-Cookie': clearSessionCookie(reqIsHttps(req)) },
   })
 }

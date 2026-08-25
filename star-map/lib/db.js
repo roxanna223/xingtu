@@ -105,15 +105,32 @@ export function getDB() {
 function migrate(d) {
   const row = d.prepare('PRAGMA user_version').get()
   let v = row && row.user_version !== undefined ? row.user_version : 0
-  if (v >= 1) return
-  d.exec('BEGIN')
-  try {
-    for (const sql of SCHEMA) d.exec(sql)
-    d.exec('PRAGMA user_version = 1')
-    d.exec('COMMIT')
-  } catch (e) {
-    d.exec('ROLLBACK')
-    throw e
+  if (v < 1) {
+    d.exec('BEGIN')
+    try {
+      for (const sql of SCHEMA) d.exec(sql)
+      d.exec('PRAGMA user_version = 1')
+      d.exec('COMMIT')
+    } catch (e) {
+      d.exec('ROLLBACK')
+      throw e
+    }
+    v = 1
+  }
+  if (v < 2) {
+    // v2:会话吊销黑名单(登出后无状态 token 立即失效)
+    d.exec('BEGIN')
+    try {
+      d.exec(`CREATE TABLE IF NOT EXISTS revoked_tokens (
+        token_sig  TEXT PRIMARY KEY,
+        expires_at TEXT NOT NULL
+      )`)
+      d.exec('PRAGMA user_version = 2')
+      d.exec('COMMIT')
+    } catch (e) {
+      d.exec('ROLLBACK')
+      throw e
+    }
   }
 }
 
