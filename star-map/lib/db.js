@@ -132,6 +132,21 @@ function migrate(d) {
       throw e
     }
   }
+  if (v < 3) {
+    // v3:危机标记持久化(修复 crisisFlag 只存内存、报告异步重读后丢失导致转介语不显示)
+    d.exec('BEGIN')
+    try {
+      const cols = d.prepare('PRAGMA table_info(profiles)').all()
+      if (!cols.some((c) => c.name === 'crisis_flag')) {
+        d.exec('ALTER TABLE profiles ADD COLUMN crisis_flag INTEGER NOT NULL DEFAULT 0')
+      }
+      d.exec('PRAGMA user_version = 3')
+      d.exec('COMMIT')
+    } catch (e) {
+      d.exec('ROLLBACK')
+      throw e
+    }
+  }
 }
 
 export function closeDB() {

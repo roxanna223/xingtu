@@ -280,6 +280,15 @@ export function applyFeedback(profile, { helpful, comment }) {
     if (c && (c.includes(t.name) || (t.quotes || []).some((q) => c.includes(q.slice(0, 6))))) {
       const shift = helpful ? 0.2 : -0.15
       t.polarity = Math.max(-1, Math.min(1, Math.round(((t.polarity || 0) + shift) * 100) / 100))
+      // 反馈提及 = 再次关注该主题：频次 +1（星图粒子大小随频次增长，兑现"你的反馈会直接改变明天的星图"）
+      t.freq = Math.max(1, (t.freq || 1) + 1)
+      t.lastActive = today()
+      // 同时强化该主题的关联连线（与抽取归并时的边强化一致）
+      for (const e of profile.edges || []) {
+        if (e.source === t.id || e.target === t.id) {
+          e.weight = Math.min(1, (e.weight || 0) + 0.3)
+        }
+      }
       adjusted.push(t.name)
     }
   }
