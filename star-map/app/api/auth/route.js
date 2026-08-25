@@ -15,7 +15,7 @@ import {
   readJsonBody,
 } from '@/lib/auth'
 
-// 邀请制注册(方案 docs/15):新用户必须携带有效邀请码;邀请码一次性使用
+// 注册(2026-08-25 起邀请码选填):不填可直接注册;填写则必须有效且一次性消耗
 const NAME_RE = /^[\u4e00-\u9fa5A-Za-z0-9_-]{2,20}$/
 
 export async function POST(req) {
@@ -45,15 +45,15 @@ export async function POST(req) {
 
   if (action === 'register') {
     if (pw.length < 8) return Response.json({ error: '密码至少 8 位' }, { status: 400 })
-    const code = String(inviteCode || '').trim()
-    if (!code) return Response.json({ error: '本产品为邀请制，注册需填写邀请码' }, { status: 400 })
+    // 邀请码选填(2026-08-25 决策变更):不填可直接注册;填了则必须有效并一次性消耗
+    const code = String(inviteCode || '').trim().toUpperCase()
 
     // 昵称冲突优先提示(优于邀请码错误,避免用户修正邀请码后才被告知重名)
     if (findUserByUsername(name)) {
       recordLoginFailure(ip, name)
       return Response.json({ error: '该昵称已被使用，换一个吧' }, { status: 409 })
     }
-    if (!isInviteAvailable(code)) {
+    if (code && !isInviteAvailable(code)) {
       recordLoginFailure(ip, name)
       return Response.json({ error: '邀请码无效、已使用或已过期' }, { status: 400 })
     }
@@ -72,15 +72,17 @@ export async function POST(req) {
         starSymbol: sign ? sign.symbol : null,
         cohort,
       })
-      const consumed = consumeInvite(code, userId)
-      if (!consumed) {
-        // 极端并发下邀请码被抢:回滚用户创建
-        deleteUserById(userId)
-        recordLoginFailure(ip, name)
-        return Response.json({ error: '邀请码无效、已使用或已过期' }, { status: 400 })
+      if (code) {
+        const consumed = consumeInvite(code, userId)
+        if (!consumed) {
+          // 极端并发下邀请码被抢:回滚用户创建
+          deleteUserById(userId)
+          recordLoginFailure(ip, name)
+          return Response.json({ error: '邀请码无效、已使用或已过期' }, { status: 400 })
+        }
       }
       clearLoginFailures(ip, name)
-      trackEvent(userId, 'register', '/api/auth', { inviteUsed: true })
+      trackEvent(userId, 'register', '/api/auth', { inviteUsed: !!code })
       const token = createSessionToken(name)
       return new Response(
         JSON.stringify({ ok: true, user: { username: name, starSign: sign ? sign.name : null, starSymbol: sign ? sign.symbol : null } }),

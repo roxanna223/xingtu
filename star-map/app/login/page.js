@@ -95,8 +95,8 @@ export default function LoginPage() {
 
             {mode === 'register' && (
               <div className="field">
-                <label>邀请码</label>
-                <input type="text" value={inviteCode} onChange={(e) => setInviteCode(e.target.value)} placeholder="邀请制注册，向管理员索取邀请码" required maxLength={16} style={{ textTransform: 'uppercase' }} />
+                <label>邀请码（选填）</label>
+                <input type="text" value={inviteCode} onChange={(e) => setInviteCode(e.target.value)} placeholder="没有可留空，直接注册" maxLength={16} style={{ textTransform: 'uppercase' }} />
               </div>
             )}
 

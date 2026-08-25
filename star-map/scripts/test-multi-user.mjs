@@ -54,30 +54,30 @@ check('admin 登录成功', !!results.admin)
 const sAdmin = await api('GET', '/api/status', { token: results.admin })
 check('admin 角色为 admin', sAdmin.data.user?.role === 'admin')
 
-// ---- B. 邀请制注册 ----
-console.log('B. 邀请制注册')
-const noCode = await api('POST', '/api/auth', { body: { action: 'register', username: 'alice', password: 'alice12345' } })
-check('无邀请码注册被拒(400)', noCode.status === 400, JSON.stringify(noCode.data))
+// ---- B. 注册(邀请码选填) ----
+console.log('B. 注册(邀请码选填)')
+const regA = await api('POST', '/api/auth', { body: { action: 'register', username: 'alice', password: 'alice12345', birthDate: '1998-03-21' } })
+check('alice 无邀请码直接注册成功(200 + cookie)', regA.status === 200 && !!regA.token, JSON.stringify(regA.data))
+check('alice 星座=白羊', regA.data?.user?.starSign === '白羊', JSON.stringify(regA.data))
 
 const inv = await api('POST', '/api/admin/invites', { body: { count: 2, note: 'test' }, token: results.admin })
 check('管理员生成 2 个邀请码(200)', inv.status === 200 && inv.data.codes?.length === 2, JSON.stringify(inv.data))
 const [codeA, codeB] = inv.data.codes || []
 
-const regA = await api('POST', '/api/auth', { body: { action: 'register', username: 'alice', password: 'alice12345', inviteCode: codeA, birthDate: '1998-03-21' } })
-check('alice 用邀请码注册成功(200 + cookie)', regA.status === 200 && !!regA.token, JSON.stringify(regA.data))
-check('alice 星座=白羊', regA.data?.user?.starSign === '白羊', JSON.stringify(regA.data))
+const regB = await api('POST', '/api/auth', { body: { action: 'register', username: 'bob', password: 'bob1234567', inviteCode: codeA } })
+check('bob 用邀请码注册成功(有码通道)', regB.status === 200 && !!regB.token)
 
-const regDup = await api('POST', '/api/auth', { body: { action: 'register', username: 'bob', password: 'bob1234567', inviteCode: codeA } })
+const regDup = await api('POST', '/api/auth', { body: { action: 'register', username: 'carol', password: 'carol123456', inviteCode: codeA } })
 check('邀请码复用被拒(400)', regDup.status === 400, JSON.stringify(regDup.data))
 
-const regB = await api('POST', '/api/auth', { body: { action: 'register', username: 'bob', password: 'bob1234567', inviteCode: codeB } })
-check('bob 用第二个码注册成功', regB.status === 200 && !!regB.token)
+const regBadCode = await api('POST', '/api/auth', { body: { action: 'register', username: 'dave', password: 'dave1234567', inviteCode: 'ZZZZZZZZ' } })
+check('无效邀请码被拒(400)', regBadCode.status === 400, JSON.stringify(regBadCode.data))
 
-const regSameName = await api('POST', '/api/auth', { body: { action: 'register', username: 'alice', password: 'alice12345', inviteCode: 'AAAAAAAA' } })
+const regSameName = await api('POST', '/api/auth', { body: { action: 'register', username: 'alice', password: 'alice12345' } })
 check('重名注册 409', regSameName.status === 409, JSON.stringify(regSameName.data))
 
 const invList = await api('GET', '/api/admin/invites', { token: results.admin })
-check('邀请码列表:2 个已使用', invList.data.invites.filter((i) => i.state === 'used').length === 2)
+check('邀请码列表:1 个已使用(codeB 未用)', invList.data.invites.filter((i) => i.state === 'used').length === 1)
 
 // ---- C. 数据隔离(不串号) ----
 console.log('C. 数据隔离')
