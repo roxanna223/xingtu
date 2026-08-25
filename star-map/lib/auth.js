@@ -201,14 +201,16 @@ export function loginLockState(ip, username = '') {
 }
 
 export function recordLoginFailure(ip, username = '') {
-  const key = lockKey(ip, username)
-  const rec = attempts.get(key) || { count: 0, lockUntil: 0 }
-  rec.count += 1
-  if (rec.count >= MAX_FAILS) {
-    rec.lockUntil = Date.now() + LOCK_MS
-    rec.count = 0
+  // 双维度记录:IP 维度 + 用户名维度,任一维度满 5 次即锁
+  for (const key of [`ip:${ip}`, username ? `u:${username}` : null].filter(Boolean)) {
+    const rec = attempts.get(key) || { count: 0, lockUntil: 0 }
+    rec.count += 1
+    if (rec.count >= MAX_FAILS) {
+      rec.lockUntil = Date.now() + LOCK_MS
+      rec.count = 0
+    }
+    attempts.set(key, rec)
   }
-  attempts.set(key, rec)
   if (attempts.size > 1000) {
     const cutoff = Date.now() - LOCK_MS
     for (const [k, v] of attempts) if (v.lockUntil < cutoff) attempts.delete(k)
@@ -216,5 +218,6 @@ export function recordLoginFailure(ip, username = '') {
 }
 
 export function clearLoginFailures(ip, username = '') {
-  attempts.delete(lockKey(ip, username))
+  attempts.delete(`ip:${ip}`)
+  if (username) attempts.delete(`u:${username}`)
 }

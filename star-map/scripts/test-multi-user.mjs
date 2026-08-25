@@ -97,6 +97,15 @@ check('alice dayCount=1', sAlice2.data.dayCount === 1)
 const sAnning2 = await api('GET', '/api/status', { token: results.anning })
 check('anning 仍为 7 天(未被 alice 污染)', sAnning2.data.dayCount === 7)
 
+// onboard:cohort/careerStage 写入 users 表(回归断言)
+const ob = await api('POST', '/api/onboard', {
+  token: regA.token,
+  body: { birthYearMonth: '1998-03', careerStage: '应届求职', worries: ['面试焦虑', '方向迷茫'] },
+})
+check('alice onboard 成功', ob.status === 200, JSON.stringify(ob.data))
+const sAliceOb = await api('GET', '/api/status', { token: regA.token })
+check('onboarded=true(cohort 已落库)', sAliceOb.data.onboarded === true, JSON.stringify(sAliceOb.data))
+
 // 越权:alice 用管理员 API
 const adminApiByAlice = await api('GET', '/api/admin/users', { token: regA.token })
 check('alice 访问管理员 API 被拒(403)', adminApiByAlice.status === 403, String(adminApiByAlice.status))

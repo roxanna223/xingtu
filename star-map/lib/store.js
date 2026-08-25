@@ -1,4 +1,5 @@
 import { getDB, transaction } from './db'
+import crypto from 'node:crypto'
 
 /**
  * 多用户数据层(方案 docs/15):
@@ -186,6 +187,15 @@ export function writeProfile(userId, p) {
     p.generating ? 1 : 0,
     now()
   )
+  // 用户维度字段(engine/onboard 会改 p.user.*)同步落 users 表,避免丢失
+  if (p.user) {
+    d.prepare('UPDATE users SET persona_tier = ?, career_stage = ?, cohort = ? WHERE id = ?').run(
+      p.user.personaTier || 'logical',
+      p.user.careerStage || '',
+      jstr(p.user.cohort ?? null),
+      userId
+    )
+  }
 }
 
 /* ---------------- days(日记) ---------------- */
@@ -255,11 +265,11 @@ export function createInvites(adminId, count, note = '', ttlDays = null) {
   return codes
 }
 
-// 8 位邀请码,排除易混字符(0/O、1/I/L)
+// 8 位邀请码,排除易混字符(0/O、1/I/L),用加密随机数生成
 const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'
 function genInviteCode() {
   let s = ''
-  for (let i = 0; i < 8; i++) s += CODE_ALPHABET[Math.floor(Math.random() * CODE_ALPHABET.length)]
+  for (let i = 0; i < 8; i++) s += CODE_ALPHABET[crypto.randomInt(CODE_ALPHABET.length)]
   return s
 }
 

@@ -8,6 +8,16 @@ KEEP=7
 
 if [[ ! -d "$DATA_DIR" ]]; then exit 0; fi
 
+# SQLite WAL 模式下先合并日志到主文件,保证 tar 快照一致
+if [[ -f "$DATA_DIR/star.db" ]]; then
+  (cd /opt/star-map/current && sudo -u starapp node -e "
+    const { DatabaseSync } = require('node:sqlite');
+    const db = new DatabaseSync('$DATA_DIR/star.db');
+    db.exec('PRAGMA wal_checkpoint(TRUNCATE)');
+    db.close();
+  " >/dev/null 2>&1 || true)
+fi
+
 STAMP=$(date +%Y%m%d-%H%M%S)
 tar -czf "$BACKUP_DIR/star-data-$STAMP.tar.gz" -C "$DATA_DIR" .
 
