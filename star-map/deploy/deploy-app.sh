@@ -49,7 +49,10 @@ sudo -u "$APP_USER" npm run build
 
 echo "==> 5/6 PM2 启动/重载"
 ln -sfn "$RELEASE_DIR" "$APP_DIR/current"
-sudo -u "$APP_USER" pm2 startOrReload "$APP_DIR/current/deploy/ecosystem.config.cjs" --env production
+# 必须 delete + start 而非 reload:PM2 reload 不更新已存在应用的 cwd(Node realpath 软链后 cwd 固化在旧 release,
+# 曾导致线上进程一直跑旧代码——见迭代日志踩坑库第 11 条)
+sudo -u "$APP_USER" pm2 delete star-map >/dev/null 2>&1 || true
+sudo -u "$APP_USER" pm2 start "$APP_DIR/current/deploy/ecosystem.config.cjs" --env production
 sudo -u "$APP_USER" pm2 save
 pm2 startup systemd -u "$APP_USER" --hp "$APP_DIR" >/dev/null || true
 
