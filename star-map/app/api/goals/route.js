@@ -53,7 +53,7 @@ export async function POST(req) {
   if (!assertSameOrigin(req)) return Response.json({ error: '跨站请求被拒绝' }, { status: 403 })
   const body = await readJsonBody(req)
   if (body.__error) return Response.json({ error: body.__error }, { status: 400 })
-  const { action = '', text = '', goalId = '', stepIndex = 0, done = true } = body
+  const { action = '', text = '', goalId = '', stepIndex = 0, subIndex = null, done = true } = body
 
   try {
     if (action === 'create') {
@@ -71,10 +71,10 @@ export async function POST(req) {
       return Response.json({ ok: true, goal })
     }
 
-    const res = await withStoreLock(() => {
+    const res = await withStoreLock(async () => {
       const p = normalizeGoals(readProfile(userId))
       let r
-      if (action === 'stepRecord') r = stepRecord(p, { goalId, stepIndex: Number(stepIndex), text })
+      if (action === 'stepRecord') r = await stepRecord(p, { goalId, stepIndex: Number(stepIndex), subIndex: subIndex == null ? null : Number(subIndex), text })
       else if (action === 'stepNote') r = stepNote(p, { goalId, stepIndex: Number(stepIndex), text })
       else if (action === 'bonusDone') r = completeBonus(p, { goalId })
       else if (action === 'toggleStep') r = toggleGoalStep(p, { goalId, stepIndex: Number(stepIndex), done: !!done })

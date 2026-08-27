@@ -223,14 +223,14 @@ ${isFirstTurn ? `目标提醒（本会话第一条回复，重要）：
 ${skillCatalogForPrompt()}
 - 测验(quiz)与能量提示(energy)沿用上面的 quiz/result 字段输出；
 - 用户表达「定目标/想改变/拆解/行动计划」类诉求 → 调用 goalBreak：输出 skill 字段
-  {"skill":{"id":"goalBreak","title":"目标拆解","goal":"目标标题(≤12字)","summary":"一句话概括目标","steps":[{"step":"步骤","metric":"量化指标"}]}}
-  步骤 3~5 步、由易到难、第一步必须是今天就能做的最小行动；只针对用户自己、可控、不伤关系、长期有用；不给医疗/投资建议、不预测结果；
+  {"skill":{"id":"goalBreak","title":"目标拆解","goal":"目标标题(≤12字)","summary":"一句话概括目标","steps":[{"step":"步骤","metric":"量化指标","type":"checkin|journal","options":[],"subItems":[]}]}}
+  步骤 3~5 步、由易到难、第一步必须是今天就能做的最小行动；只针对用户自己、可控、不伤关系、长期有用；不给医疗/投资建议、不预测结果；type 判定：只答"是/否"就能完成量化→checkin，需要具体数据→journal（拿不准归 journal）；subItems：能拆成并列可分别完成的细分项就拆（如三餐→早餐/午餐/晚餐，每项 points 5），不能拆为空数组；
 - 其余为普通闲聊，skill 为 null。
 
 - 只输出 JSON：{"reply":"给用户的话","quiz":null,"result":null,"skill":null}
   quiz 为 null 或 {"id":"flower","title":"测一测你是什么花","emoji":"🌸","index":1,"total":3,"question":"...","options":["...","..."]}；
   result 为 null 或 {"quizId":"flower","title":"桃花","emoji":"🌸","headline":"...","content":"..."}；
-  skill 为 null 或 {"id":"goalBreak","title":"目标拆解","goal":"...","summary":"...","steps":[{"step":"...","metric":"..."}]}。`
+  skill 为 null 或 {"id":"goalBreak","title":"目标拆解","goal":"...","summary":"...","steps":[{"step":"...","metric":"...","type":"checkin","options":[],"subItems":[]}]}。`
 
   const transcript = (history || [])
     .map((m) => `${m.role === 'user' ? '用户' : '小星'}：${m.content}`)
@@ -281,9 +281,11 @@ ${JSON.stringify(summary)}
    - 不能 → "journal"（主观题）：量化需要用户提供具体数据/内容，如"记录一日三餐"（需要吃了什么的数据）、"称重记录"（需要体重数字）、"写下读书收获"（需要内容）——用户只回答"记了/没记"无法完成量化，必须在本产品内输入数据；"记不清了/没称"也是有效的主观数据；
    - journal 必须给 2~4 个数据向快捷选项 options（如 早餐/午餐/晚餐/加餐、晨起称重/睡前称重），checkin 的 options 为空数组；
    - 拿不准一律归 journal：本产品是量化工具，量化数据必须在产品内采集，不能假设用户去别的工具量化后回来点"是"；
+   - 细分项 subItems（重要，尽量拆）：步骤涉及**每日多次、可分别独立完成**的事项时，必须拆成细分项——如"记录三餐"→[{"name":"早餐","points":5},{"name":"午餐","points":5},{"name":"晚餐","points":5}]（用户随时单独记录一项、单独计分）；"每天喝 8 杯水"→上午/下午/晚上；**单次测量类（称重、打卡某行为）不拆**，subItems 为空数组 []；有 subItems 时 options 为空数组；
+   - 示例：{"step":"记录今天的一日三餐","metric":"完整记录 7 天三餐","type":"journal","options":[],"subItems":[{"name":"早餐","points":5},{"name":"午餐","points":5},{"name":"晚餐","points":5}]}；
 6. goal 是目标本身的精炼标题（≤12 字，动宾结构，如"改掉熬夜"）；summary 用一句话把目标说清楚；title 固定为"目标拆解"；
 7. 只输出 JSON：
-{"reply":"承接用户的一句话(≤40字)","skill":{"id":"goalBreak","title":"目标拆解","goal":"目标标题","summary":"一句话概括目标","steps":[{"step":"步骤","metric":"量化指标","type":"checkin","options":[]}]}}`
+{"reply":"承接用户的一句话(≤40字)","skill":{"id":"goalBreak","title":"目标拆解","goal":"目标标题","summary":"一句话概括目标","steps":[{"step":"步骤","metric":"量化指标","type":"checkin","options":[],"subItems":[]}]}}`
 
   return [
     { role: 'system', content: sys },
@@ -332,6 +334,29 @@ ${JSON.stringify({ title: goal.title, summary: goal.summary, steps: goal.steps.f
   return [
     { role: 'system', content: sys },
     { role: 'user', content: '请生成今天的彩蛋任务。' },
+  ]
+}
+
+/* ---------------- 随手记 AI 梳理（structuredLog，目标系统 v2.2） ---------------- */
+
+export function structuredLogMessages(step, text) {
+  const undone = (step.subItems || [])
+    .map((s, i) => ({ index: i, name: s.name, done: !!s.doneAt }))
+    .filter((s) => !s.done)
+  const sys = `你是「星图」产品的记录整理助手。用户随手记了一段内容，需要把它归类到步骤的细分项里（只归未完成的项）。
+
+可归类的细分项（index 从 0 开始）：
+${JSON.stringify(undone.map((u) => ({ index: u.index, name: u.name })))}
+
+规则：
+1. 按文本实际提到的内容归类：如文本含"早上吃了鸡蛋"→ 归到名为"早餐"的项；
+2. 每项 text 用用户原话提炼（≤30 字），保留具体内容（如"鸡蛋+牛奶"）；
+3. 文本没提到的细分项不输出；文本无法对应任何细分项时，整段归到第一个未完成项；
+4. 一项最多一条；只输出 JSON：{"items":[{"subIndex":0,"text":"..."}]}`
+
+  return [
+    { role: 'system', content: sys },
+    { role: 'user', content: `用户随手记：${String(text || '').slice(0, 400)}` },
   ]
 }
 

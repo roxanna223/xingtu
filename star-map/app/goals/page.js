@@ -31,7 +31,7 @@ export default function GoalsPage() {
   const [text, setText] = useState('')
   const [busy, setBusy] = useState(false)
   const [toast, setToast] = useState('')
-  const [form, setForm] = useState(null) // { goalId, stepIndex, mode:'journal'|'note', text }
+  const [form, setForm] = useState(null) // { goalId, stepIndex, subIndex, mode:'journal'|'note', text }
 
   function showToast(msg) {
     setToast(msg)
@@ -227,6 +227,11 @@ export default function GoalsPage() {
                   const need = needCount(s.metric)
                   const open = form && form.goalId === g.id && form.stepIndex === i
                   const isJournal = s.type === 'journal'
+                  const today = new Date().toISOString().slice(0, 10)
+                  const subs = s.subItems || []
+                  const subDoneToday = (x) => x.doneAt === today
+                  const subsAllDone = subs.length > 0 && subs.every(subDoneToday)
+                  const subDoneCount = subs.filter(subDoneToday).length
                   return (
                     <div key={i} className={`goal-step ${s.status === 'done' ? 'done' : ''}`}>
                       <span className="goal-idx">{s.status === 'done' ? '✓' : i + 1}</span>
@@ -242,6 +247,41 @@ export default function GoalsPage() {
                               ? `${s.metric} · 已 ${Math.min(doneCount, need)}/${need}${streakN >= 2 ? ` · 🔥连续 ${streakN} 天` : ''}`
                               : s.metric}
                         </div>
+
+                        {subs.length > 0 && (
+                          <div className="subitem-row">
+                            {subs.map((sub, si) => {
+                              const done = subDoneToday(sub)
+                              return done ? (
+                                <span key={si} className="subitem-chip done" title={sub.text || ''}>
+                                  ✓ {sub.name}
+                                </span>
+                              ) : (
+                                <button
+                                  key={si}
+                                  className="subitem-chip"
+                                  onClick={() => setForm({ goalId: g.id, stepIndex: i, subIndex: si, mode: 'journal', text: '' })}
+                                >
+                                  {sub.name} +{sub.points || 5}
+                                </button>
+                              )
+                            })}
+                            {!subsAllDone && (
+                              <button
+                                className="subitem-chip quick"
+                                onClick={() => setForm({ goalId: g.id, stepIndex: i, subIndex: null, mode: 'journal', text: '' })}
+                              >
+                                ✍️ 随手记（AI 帮你分）
+                              </button>
+                            )}
+                            {subDoneCount > 0 && !subsAllDone && (
+                              <span className="muted" style={{ fontSize: 11 }}>
+                                今日 {subDoneCount}/{subs.length}
+                              </span>
+                            )}
+                          </div>
+                        )}
+
                         {log && (
                           <div className="step-log">
                             ✓ 今日已{isJournal ? '记录' : '完成'}：{log.text || '完成'}
@@ -249,7 +289,7 @@ export default function GoalsPage() {
                         )}
                         {open && (
                           <div className="record-form">
-                            {(s.options || []).length > 0 && (
+                            {form.subIndex == null && (s.options || []).length > 0 && (
                               <div className="record-chips">
                                 {(s.options || []).map((o) => (
                                   <button
@@ -266,7 +306,17 @@ export default function GoalsPage() {
                               type="text"
                               value={form.text}
                               onChange={(e) => setForm((f) => ({ ...f, text: e.target.value }))}
-                              placeholder={form.mode === 'note' ? '补一句备注（可选）' : isJournal ? '写一写今天的数据（吃了什么/称了多少…或点上面选项）' : '备注（可选）'}
+                              placeholder={
+                                form.mode === 'note'
+                                  ? '补一句备注（可选）'
+                                  : form.subIndex != null
+                                    ? `写一写${(subs[form.subIndex] || {}).name || ''}的内容`
+                                    : subs.length > 0
+                                      ? '把今天吃的/做的都写下来，AI 帮你分到各项（也可只写一项）'
+                                      : isJournal
+                                        ? '写一写今天的数据（吃了什么/称了多少…或点上面选项）'
+                                        : '备注（可选）'
+                              }
                               maxLength={300}
                             />
                             <div className="row" style={{ marginTop: 8, gap: 8 }}>
@@ -274,12 +324,26 @@ export default function GoalsPage() {
                                 className="btn btn-primary"
                                 onClick={() =>
                                   act(
-                                    { action: form.mode === 'note' ? 'stepNote' : 'stepRecord', goalId: g.id, stepIndex: i, text: form.text },
-                                    form.mode === 'note' ? '备注已保存' : isJournal ? '已记录 ✓' : '已完成 ✓'
+                                    {
+                                      action: form.mode === 'note' ? 'stepNote' : 'stepRecord',
+                                      goalId: g.id,
+                                      stepIndex: i,
+                                      subIndex: form.subIndex,
+                                      text: form.text,
+                                    },
+                                    form.mode === 'note'
+                                      ? '备注已保存'
+                                      : form.subIndex != null
+                                        ? `已记录${(subs[form.subIndex] || {}).name || ''} +${(subs[form.subIndex] || {}).points || 5} ✓`
+                                        : subs.length > 0
+                                          ? '已记录 ✓'
+                                          : isJournal
+                                            ? '已记录 ✓'
+                                            : '已完成 ✓'
                                   )
                                 }
                               >
-                                {form.mode === 'note' ? '保存备注' : isJournal ? '提交记录' : '完成'}
+                                {form.mode === 'note' ? '保存备注' : form.subIndex != null ? '提交' : subs.length > 0 ? '提交（AI 梳理）' : isJournal ? '提交记录' : '完成'}
                               </button>
                               <button className="btn btn-ghost" onClick={() => setForm(null)}>取消</button>
                             </div>
@@ -289,21 +353,23 @@ export default function GoalsPage() {
                       {g.status === 'active' && s.status === 'todo' && !open && (
                         <div className="step-actions">
                           {log ? (
-                            <button className="login-skip" onClick={() => setForm({ goalId: g.id, stepIndex: i, mode: 'note', text: log.text || '' })}>
+                            <button className="login-skip" onClick={() => setForm({ goalId: g.id, stepIndex: i, subIndex: null, mode: 'note', text: log.text || '' })}>
                               ✏️ 备注
                             </button>
-                          ) : isJournal ? (
-                            <button className="btn btn-primary btn-sm" onClick={() => setForm({ goalId: g.id, stepIndex: i, mode: 'journal', text: '' })}>
-                              ✍️ 写一写
-                            </button>
-                          ) : (
-                            <button
-                              className="btn btn-primary btn-sm"
-                              onClick={() => act({ action: 'stepRecord', goalId: g.id, stepIndex: i, text: '' }, '已完成 ✓')}
-                            >
-                              ✓ 完成
-                            </button>
-                          )}
+                          ) : subs.length === 0 ? (
+                            isJournal ? (
+                              <button className="btn btn-primary btn-sm" onClick={() => setForm({ goalId: g.id, stepIndex: i, subIndex: null, mode: 'journal', text: '' })}>
+                                ✍️ 写一写
+                              </button>
+                            ) : (
+                              <button
+                                className="btn btn-primary btn-sm"
+                                onClick={() => act({ action: 'stepRecord', goalId: g.id, stepIndex: i, subIndex: null, text: '' }, '已完成 ✓')}
+                              >
+                                ✓ 完成
+                              </button>
+                            )
+                          ) : null}
                         </div>
                       )}
                       {g.status === 'active' && s.status === 'done' && (

@@ -642,6 +642,17 @@ select option { background: var(--panel); color: var(--txt); }
   font-size: 10px; font-weight: 700; vertical-align: 1px;
 }
 .btn-sm { padding: 5px 12px; font-size: 12px; }
+.subitem-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; }
+.subitem-chip {
+  background: transparent; border: 2px solid var(--line-dim); color: var(--txt);
+  font-size: 12px; padding: 4px 10px; cursor: pointer;
+}
+.subitem-chip:hover { border-color: var(--green); }
+.subitem-chip.done {
+  border-color: var(--green); background: rgba(107, 220, 143, 0.15);
+  color: var(--green); cursor: default; font-weight: 700;
+}
+.subitem-chip.quick { border-style: dashed; color: var(--yellow); border-color: var(--yellow); }
 .goal-level { font-size: 12px; color: var(--yellow); font-weight: 700; margin-left: 6px; }
 .step-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
 .step-log {
