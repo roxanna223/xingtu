@@ -265,6 +265,8 @@ export async function stepRecord(profile, { goalId, stepIndex, subIndex = null, 
         }
       }
       if (!items) items = ruleSplitSubItems(step, t)
+      // 安全过滤：否定/未发生的内容一律不落档（"晚上还没到"≠晚餐已记录）
+      items = items.filter((it) => it && !isNegatedText(String(it.text || '')))
       for (const it of items) {
         const sub = subs[Number(it.subIndex)]
         if (!sub || sub.doneAt === today) continue
@@ -274,7 +276,12 @@ export async function stepRecord(profile, { goalId, stepIndex, subIndex = null, 
         applied.push({ subIndex: Number(it.subIndex), text: sub.text, name: sub.name })
       }
     }
-    if (!applied.length) return { error: '这些内容今天都已经记过了' }
+    if (!applied.length) {
+      const allNeg = isNegatedText(t)
+      return allNeg
+        ? { error: '这些内容看起来都还没发生（还没吃/还没到/没记），先不落档；等发生了再随手记～' }
+        : { error: '这些内容今天都已经记过了' }
+    }
 
     // 逐项留痕（轨迹可见"早餐：鸡蛋+牛奶"）
     for (const a of applied) {
@@ -339,7 +346,7 @@ function finishStep(profile, goal, step, stepIndex, note) {
   }
 }
 
-/** 随手记规则兜底：按细分项名称/时段词归位，无法对应时归到第一个未完成项 */
+/** 随手记规则兜底：按细分项名称/时段词归位（否定感知），无法对应时归到第一个未完成项 */
 function ruleSplitSubItems(step, text) {
   const subs = step.subItems || []
   const today = nowDay()
@@ -350,16 +357,44 @@ function ruleSplitSubItems(step, text) {
   const seen = new Set()
   for (const x of undone) {
     const pats = ALIAS[x.s.name] || [new RegExp(x.s.name)]
-    if (pats.some((p) => p.test(text)) && !seen.has(x.i)) {
-      items.push({ subIndex: x.i, text: text.slice(0, 40) })
-      seen.add(x.i)
-    }
+    const hit = pats.find((p) => p.test(text))
+    if (!hit || seen.has(x.i)) continue
+    const m = text.match(hit)
+    if (!m || isNegated(text, hit)) continue
+    items.push({ subIndex: x.i, text: clauseAt(text, m.index) })
+    seen.add(x.i)
   }
-  if (!items.length) {
-    // 整段无法归类 → 归给第一个未完成项（保留原话，用户可后续修正）
-    items.push({ subIndex: undone[0].i, text: text.slice(0, 40) })
+  if (!items.length && !isNegatedText(text)) {
+    // 整段无法归类（且并非全是未发生）→ 归给第一个未完成项，保留原话
+    items.push({ subIndex: undone[0].i, text: clauseAt(text, 0) || text.slice(0, 40) })
   }
   return items
+}
+
+/** 截取命中关键词所在子句（按标点切分，避免把整段文本都算作单项内容） */
+function clauseAt(text, idx) {
+  let s = idx
+  let e = idx
+  while (s > 0 && !/[，,。！？;；\n]/.test(text[s - 1])) s--
+  while (e < text.length && !/[，,。！？;；\n]/.test(text[e])) e++
+  return text.slice(s, e).trim()
+}
+
+/** 关键词是否被否定（只在命中词所在的子句内判断，避免跨子句误伤："中午吃了X，晚饭还没吃"→只否定晚饭） */
+function isNegated(text, kwRe) {
+  const m = text.match(kwRe)
+  if (!m) return false
+  const clause = clauseAt(text, m.index)
+  return NEG_RE.test(clause) && !DOUBLE_NEG_RE.test(clause)
+}
+
+const NEG_RE = /(还没|没|未|没有|不)[^。！？,，;；]{0,5}(吃|到|记|做|写|喝|量|发生|进行|打卡)/
+const DOUBLE_NEG_RE = /不是没|没少吃|不是不/
+
+/** 整段文本是否带否定（无关键词锚点时用） */
+function isNegatedText(text) {
+  const s = String(text || '')
+  return NEG_RE.test(s) && !DOUBLE_NEG_RE.test(s)
 }
 
 /* ---------------- 维度④激励：积分 + 每日彩蛋任务 ---------------- */
