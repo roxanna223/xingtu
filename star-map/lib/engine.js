@@ -9,6 +9,7 @@ import { aiMoodCard } from './moodImage.js'
 import { QUIZZES, pickResult } from './quizzes.js'
 import { behaviorSummary } from './behavior.js'
 import { routeSkill } from './skills.js'
+import { goalsSummaryForPrompt } from './goals.js'
 
 function llmConfig() {
   return {
@@ -457,6 +458,7 @@ export function buildProfileSummary(profile) {
     testCount: (profile.tests || []).length,
     lastJudgement: profile.lastReport?.judgement || '',
     behavior: behaviorSummary(profile),
+    goals: goalsSummaryForPrompt(profile),
   }
 }
 
@@ -529,19 +531,34 @@ export function mockStar(history = [], quiz = null, summary = {}) {
 
   // 普通闲聊（Mock 兜底）
   const topic = summary.topTopics?.[0]
+  const reminder = userTurns.length === 1 ? goalsReminderLineForMock(summary.goals) : ''
+  const base = topic
+    ? `我在听。你最近常提到「${topic}」，今天想聊它，还是说点别的？`
+    : '我在听，慢慢说。'
   return {
-    reply: topic
-      ? `我在听。你最近常提到「${topic}」，今天想聊它，还是说点别的？`
-      : '我在听，慢慢说。',
+    reply: reminder ? `${reminder}\n\n${base}` : base,
     quiz: null,
     result: null,
   }
 }
 
+/** Mock 开场目标提醒（LLM 模式由 starMessages 提示词生成） */
+function goalsReminderLineForMock(goals) {
+  const list = Array.isArray(goals) ? goals : []
+  if (!list.length) return ''
+  const doing = list.find((g) => g.doneSteps > 0 && g.nextStep)
+  const fresh = list.find((g) => g.doneSteps === 0)
+  const idle = list.find((g) => g.idleDays >= 3)
+  if (doing) return `🎯 你的目标「${doing.title}」已完成 ${doing.doneSteps}/${doing.totalSteps}，下一步可以试试：${doing.nextStep}。`
+  if (idle) return `🎯 你的目标「${idle.title}」有 ${idle.idleDays} 天没更新了，今天想为它做点什么吗？`
+  if (fresh) return `🎯 你的目标「${fresh.title}」已经拆好 ${fresh.totalSteps} 步，随时可以从第 1 步开始。`
+  return ''
+}
+
 /* ---------------- Skill：目标拆解（goalBreak，P0-2a 新增） ---------------- */
 
 // 从诉求里提取目标主体（Mock 用，粗略但可解释）
-function goalTarget(text) {
+export function goalTarget(text) {
   return String(text || '')
     .replace(/^(我)?(想|要|打算|准备)/, '')
     .replace(/定个目标|立个目标|目标|拆解|帮我|怎么开始|行动计划|改变|改掉|养成|[:：,，。\s]+/g, '')
@@ -558,6 +575,7 @@ export function mockGoalBreak(text = '', summary = {}) {
     skill: {
       id: 'goalBreak',
       title: '目标拆解',
+      goal: target,
       summary: `把「${target}」变成可以走的三步`,
       steps: [
         { step: `把「${target}」写成一句话，并写下现在的状态与想要的差距`, metric: '写 1 条目标陈述 + 1 条现状记录' },

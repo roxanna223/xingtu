@@ -1,5 +1,6 @@
 import { readProfile, writeProfile, readDays, writeDays, readChats, withStoreLock } from '@/lib/store'
 import { extractAndMerge, generateReport } from '@/lib/engine'
+import { syncGoalsWithText } from '@/lib/goals'
 import { updateBehavior } from '@/lib/behavior'
 import { detectIntent, patternTopics } from '@/lib/intent'
 import { markSessionCovered, consumePendingChats } from '@/lib/chatStore'
@@ -57,6 +58,11 @@ export async function POST(req) {
         fresh.lastReport = rep
         fresh.reports = fresh.reports || {}
         if (lastD) fresh.reports[lastD.date] = { ...rep, trackText: track }
+        // 目标系统 v1：当日记录自动同步目标进度（LLM 判定 + 规则兜底）
+        const dayText = `${lastD?.freeText || ''} ${lastD?.q1 || ''} ${lastD?.q3 || ''}`.trim()
+        if (dayText && (fresh.goals || []).some((g) => g.status === 'active')) {
+          await syncGoalsWithText(fresh, dayText, 'record')
+        }
         fresh.generating = false
         writeProfile(userId, fresh)
       })

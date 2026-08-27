@@ -13,6 +13,7 @@ export default function NavBar() {
     ['/', '🏠', '首页'],
     ['/record', '🗺️', '记录'],
     ['/star-map', '🌌', '星图'],
+    ['/goals', '🎯', '计划'],
     ['/report', '📜', '报告'],
     ['/chat', '💬', '小星'],
   ]

@@ -83,6 +83,7 @@ export default function HomePage() {
       <div className="sec-title">— SHORTCUTS · 快捷入口 —</div>
       <div className="home-quick">
         <Link href="/report" className="q"><i>📜</i>今日报告</Link>
+        <Link href="/goals" className="q"><i>🎯</i>目标计划</Link>
         <Link href="/star-map" className="q"><i>🌌</i>内心星图</Link>
         <Link href="/tests" className="q"><i>🎒</i>测验记录</Link>
       </div>

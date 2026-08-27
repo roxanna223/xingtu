@@ -13,6 +13,7 @@ export default function StarChatPage() {
   const [sBusy, setSBusy] = useState(false)
   const [toast, setToast] = useState('')
   const [micOn, setMicOn] = useState(false)
+  const [goalSummary, setGoalSummary] = useState([])
   const recRef = useRef(null)
   const endRef = useRef(null)
   const sessionRef = useRef(null) // 服务端持久化会话，刷新可恢复
@@ -20,6 +21,18 @@ export default function StarChatPage() {
   function showToast(msg) {
     setToast(msg)
     setTimeout(() => setToast(''), 4000)
+  }
+
+  async function loadGoalSummary() {
+    try {
+      const r = await fetch('/api/goals')
+      if (r.ok) {
+        const d = await r.json()
+        setGoalSummary(d.summary || [])
+      }
+    } catch {
+      /* 目标摘要失败不阻塞 */
+    }
   }
 
   useEffect(() => {
@@ -66,6 +79,7 @@ export default function StarChatPage() {
   useEffect(() => {
     fetchSuggestions()
     restoreChat()
+    loadGoalSummary()
   }, [])
 
   async function send(text) {
@@ -87,6 +101,10 @@ export default function StarChatPage() {
       setQuiz(d.quiz || null)
       if (d.result) showToast('已存入测试报告 📋')
       if (d.skill) showToast('已生成目标拆解 🎯')
+      if (d.goal) {
+        showToast(`目标「${d.goal.title}」已加入计划栏目 🎯`)
+        loadGoalSummary()
+      }
     } catch {
       showToast('小星走神了，再试一次')
     }
@@ -154,6 +172,20 @@ export default function StarChatPage() {
       <NavBar />
 
       <div className="card chat-panel">
+        {messages.length === 0 && goalSummary.length > 0 && (
+          <Link href="/goals" className="goal-remind">
+            <span>🎯</span>
+            <div>
+              <b>进行中的目标</b>
+              <p>
+                {goalSummary.slice(0, 2).map((g) => `「${g.title}」${g.doneSteps}/${g.totalSteps}`).join(' · ')}
+                {goalSummary.length > 2 ? ` 等 ${goalSummary.length} 个` : ''}
+              </p>
+            </div>
+            <span className="arr">▶</span>
+          </Link>
+        )}
+
         <div className="chat-scroll">
           {messages.length === 0 && (
             <div className="star-intro">
@@ -205,6 +237,9 @@ export default function StarChatPage() {
                       </div>
                     </div>
                   ))}
+                  <Link href="/goals" className="muted" style={{ display: 'inline-block', marginTop: 10, fontSize: 12 }}>
+                    已加入计划栏目，点击查看完成轨迹 →
+                  </Link>
                 </div>
               )}
             </div>

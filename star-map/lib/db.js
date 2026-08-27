@@ -178,6 +178,21 @@ function migrate(d) {
       throw e
     }
   }
+  if (v < 6) {
+    // v6:目标系统(路线图 P2 提前落地 v1):目标+步骤+进度轨迹,由记录/聊天自动同步进展
+    d.exec('BEGIN')
+    try {
+      const cols = d.prepare('PRAGMA table_info(profiles)').all()
+      if (!cols.some((c) => c.name === 'goals')) {
+        d.exec("ALTER TABLE profiles ADD COLUMN goals TEXT NOT NULL DEFAULT '[]'")
+      }
+      d.exec('PRAGMA user_version = 6')
+      d.exec('COMMIT')
+    } catch (e) {
+      d.exec('ROLLBACK')
+      throw e
+    }
+  }
 }
 
 export function closeDB() {

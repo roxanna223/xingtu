@@ -606,6 +606,35 @@ select option { background: var(--panel); color: var(--txt); }
 }
 .goal-text { font-size: 13.5px; line-height: 1.7; }
 
+/* ---------- 计划栏目（目标系统 v1） ---------- */
+.goal-create { display: flex; gap: 10px; align-items: center; padding: 12px 14px; }
+.goal-create input { flex: 1; }
+.goal-page-card { padding: 16px; }
+.goal-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 10px; }
+.goal-title { font-size: 16px; font-weight: 800; color: var(--txt); }
+.goal-bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.goal-bar { flex: 1; height: 8px; background: rgba(0, 0, 0, 0.3); border: 2px solid var(--line-dim); position: relative; }
+.goal-bar i { display: block; height: 100%; background: var(--green); }
+.goal-steps { display: flex; flex-direction: column; gap: 8px; }
+.goal-step.done { opacity: 0.75; }
+.goal-step.done .goal-idx { background: var(--green); color: #000; }
+.goal-tl { margin-top: 14px; border-top: 2px dashed var(--line-dim); padding-top: 12px; }
+.goal-tl-item { display: flex; gap: 10px; margin-bottom: 8px; }
+.goal-tl-icon { flex: 0 0 20px; text-align: center; }
+.goal-tl-head { font-size: 12.5px; color: var(--txt); }
+
+/* ---------- 小星页目标提醒条 ---------- */
+.goal-remind {
+  display: flex; align-items: center; gap: 10px;
+  background: rgba(107, 220, 143, 0.08);
+  border: 2px solid var(--green);
+  padding: 10px 14px; margin-bottom: 10px;
+  text-decoration: none; color: var(--txt);
+}
+.goal-remind b { font-size: 13px; }
+.goal-remind p { margin: 2px 0 0; font-size: 12px; color: var(--dim); }
+.goal-remind .arr { margin-left: auto; color: var(--green); }
+
 /* ---------- 心情轨迹 ---------- */
 .track-list { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
 .track-item {

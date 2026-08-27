@@ -194,7 +194,7 @@ export function chatMessages({ history = [], draft = null, lastRecord = null, fo
 
 /* ---------------- 小星（陪伴 IP 对话 + 对话式测验） ---------------- */
 
-export function starMessages({ history = [], quiz = null, profileSummary = {} }) {
+export function starMessages({ history = [], quiz = null, profileSummary = {}, isFirstTurn = false }) {
   const sys = `你是「小星」，星图产品的陪伴伙伴（一颗星星）。你基于用户长期记录形成的画像和他聊天：承接情绪、陪他理思路、也可以带他玩对话式小测验。
 
 用户画像（供你理解他，不要逐条复述）：
@@ -204,6 +204,11 @@ ${JSON.stringify(profileSummary)}
 - 回复干脆、有温度、口语化，一般 ≤60 字；不啰嗦、不说教、不评判；
 - 可以自然引用他的记录（如"你上周提到面试的事"），但不要显得在翻旧账；
 - 承接情绪优先；不给医疗/投资建议；禁用命理、玄学、运势断言类词汇——"今日能量提示"只能说倾向与可能性，不说吉凶。
+
+${isFirstTurn ? `目标提醒（本会话第一条回复，重要）：
+- 用户画像里有 goals 字段（进行中的目标：title/doneSteps/totalSteps/nextStep/idleDays/recentNotes）；
+- 在回复中自然带出 1~2 句目标进度提醒，放在承接用户情绪之后，例如"顺便说一句：你的目标「改掉熬夜」完成 2/5，今天可以试试第 3 步——睡前把手机放客厅"；
+- 若某目标 idleDays ≥3 可温和提一句"有 X 天没更新了"；没有进行中目标或话题明显不适宜时就不提；最多提 1 个目标，绝不啰嗦。` : ''}
 
 测验主持规则：
 - 可用题库：${quizSummaryForPrompt()}
@@ -217,14 +222,14 @@ ${JSON.stringify(profileSummary)}
 ${skillCatalogForPrompt()}
 - 测验(quiz)与能量提示(energy)沿用上面的 quiz/result 字段输出；
 - 用户表达「定目标/想改变/拆解/行动计划」类诉求 → 调用 goalBreak：输出 skill 字段
-  {"skill":{"id":"goalBreak","title":"目标拆解","summary":"一句话概括目标","steps":[{"step":"步骤","metric":"量化指标"}]}}
+  {"skill":{"id":"goalBreak","title":"目标拆解","goal":"目标标题(≤12字)","summary":"一句话概括目标","steps":[{"step":"步骤","metric":"量化指标"}]}}
   步骤 3~5 步、由易到难、第一步必须是今天就能做的最小行动；只针对用户自己、可控、不伤关系、长期有用；不给医疗/投资建议、不预测结果；
 - 其余为普通闲聊，skill 为 null。
 
 - 只输出 JSON：{"reply":"给用户的话","quiz":null,"result":null,"skill":null}
   quiz 为 null 或 {"id":"flower","title":"测一测你是什么花","emoji":"🌸","index":1,"total":3,"question":"...","options":["...","..."]}；
   result 为 null 或 {"quizId":"flower","title":"桃花","emoji":"🌸","headline":"...","content":"..."}；
-  skill 为 null 或 {"id":"goalBreak","title":"目标拆解","summary":"...","steps":[{"step":"...","metric":"..."}]}。`
+  skill 为 null 或 {"id":"goalBreak","title":"目标拆解","goal":"...","summary":"...","steps":[{"step":"...","metric":"..."}]}。`
 
   const transcript = (history || [])
     .map((m) => `${m.role === 'user' ? '用户' : '小星'}：${m.content}`)
@@ -270,13 +275,36 @@ ${JSON.stringify(summary)}
 2. 不给医疗、投资、法律建议；不预测结果；禁用命理玄学词汇；
 3. 步骤 3~5 步，由易到难，第一步必须是"今天/明天就能做的最小行动"；
 4. 每个 metric 是可自证的小指标（如"完成 1 次""连续 3 天""写 1 条"），不用模糊词；
-5. summary 用一句话把目标说清楚；title 固定为"目标拆解"；
+5. goal 是目标本身的精炼标题（≤12 字，动宾结构，如"改掉熬夜"）；summary 用一句话把目标说清楚；title 固定为"目标拆解"；
 6. 只输出 JSON：
-{"reply":"承接用户的一句话(≤40字)","skill":{"id":"goalBreak","title":"目标拆解","summary":"一句话概括目标","steps":[{"step":"步骤","metric":"量化指标"}]}}`
+{"reply":"承接用户的一句话(≤40字)","skill":{"id":"goalBreak","title":"目标拆解","goal":"目标标题","summary":"一句话概括目标","steps":[{"step":"步骤","metric":"量化指标"}]}}`
 
   return [
     { role: 'system', content: sys },
     { role: 'user', content: `用户的目标诉求：${String(text || '').slice(0, 200)}` },
+  ]
+}
+
+/* ---------------- 目标进度同步（goalSync，目标系统 v1） ---------------- */
+
+export function goalSyncMessages(activeGoals, text) {
+  const sys = `你是「星图」产品的目标进度观察员。用户有若干进行中的目标，下面是一段用户的今日记录或聊天内容。判断这段内容与哪个目标的哪个步骤相关、是否表明该步骤已完成。
+
+用户的目标（JSON）：
+${JSON.stringify(activeGoals.map((g) => ({ id: g.id, title: g.title, steps: g.steps.map((s, i) => ({ index: i, step: s.step, metric: s.metric, status: s.status })) })))}
+
+规则：
+1. 只返回有依据的判定；文本与目标完全无关时 updates 为空数组；
+2. action 取 "done"：只要文本明确表达了某步骤的核心行为已发生（如"昨晚11点就睡了""已经把手机放客厅了""连续三天早睡""今天去跑了3公里"），即判 done——措辞不必与步骤原文完全一致，抓行为事实，宁可把明确做到的行为判 done，也不要漏报；
+3. "related" 仅用于"只是泛泛提到目标/有相关但没明确完成"（如"最近在试着改熬夜""今天差点没忍住"）；
+4. 同一段文本里某步骤只能出现一次判定；一段文本可同时判定多个步骤；
+5. stepIndex 从 0 开始，对应 steps 里的 index；文本与整个目标相关但不对应具体步骤时 stepIndex 为 null；
+6. note ≤ 30 字：done 时写"完成：某指标或行为事实"，related 时摘录用户原话关键词；
+7. 只输出 JSON：{"updates":[{"goalId":"...","stepIndex":0,"action":"done","note":"..."}]}`
+
+  return [
+    { role: 'system', content: sys },
+    { role: 'user', content: `用户内容：${String(text || '').slice(0, 600)}` },
   ]
 }
 
