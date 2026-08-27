@@ -10,6 +10,7 @@ import {
   stepNote,
   completeBonus,
   ensureDailyBonus,
+  normalizeGoals,
 } from '@/lib/goals'
 import { requireAuth, assertSameOrigin, readJsonBody } from '@/lib/auth'
 import { trackReq } from '@/lib/track'
@@ -27,7 +28,7 @@ export async function GET(req) {
   const userId = auth.user.id
   try {
     const data = await withStoreLock(async () => {
-      const p = readProfile(userId)
+      const p = normalizeGoals(readProfile(userId))
       // 彩蛋任务懒生成：跨天过期则为每个活跃目标补今天的（LLM 生成 + Mock 兜底，一天一次）
       const active = (p.goals || []).filter((g) => g.status === 'active')
       if (active.length) {
@@ -71,7 +72,7 @@ export async function POST(req) {
     }
 
     const res = await withStoreLock(() => {
-      const p = readProfile(userId)
+      const p = normalizeGoals(readProfile(userId))
       let r
       if (action === 'stepRecord') r = stepRecord(p, { goalId, stepIndex: Number(stepIndex), text })
       else if (action === 'stepNote') r = stepNote(p, { goalId, stepIndex: Number(stepIndex), text })

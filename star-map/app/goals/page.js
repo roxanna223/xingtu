@@ -122,7 +122,7 @@ export default function GoalsPage() {
     <div className="page">
       <div className="page-head">
         <h1>计划</h1>
-        <span className="sub">主观任务写一写 · 客观任务点完成 · 达标自动进阶{summary.length > 0 ? ` · 进行中 ${summary.length} 个` : ''}</span>
+        <span className="sub">主观题填数据 · 客观题一键完成 · 达标自动进阶{summary.length > 0 ? ` · 进行中 ${summary.length} 个` : ''}</span>
       </div>
       <NavBar />
 
@@ -266,7 +266,7 @@ export default function GoalsPage() {
                               type="text"
                               value={form.text}
                               onChange={(e) => setForm((f) => ({ ...f, text: e.target.value }))}
-                              placeholder={form.mode === 'note' ? '补一句备注（可选）' : isJournal ? '写一写今天的情况（或点上面选项）' : '备注（可选）'}
+                              placeholder={form.mode === 'note' ? '补一句备注（可选）' : isJournal ? '写一写今天的数据（吃了什么/称了多少…或点上面选项）' : '备注（可选）'}
                               maxLength={300}
                             />
                             <div className="row" style={{ marginTop: 8, gap: 8 }}>

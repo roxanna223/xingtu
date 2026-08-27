@@ -12,6 +12,25 @@ import { goalSyncMessages, bonusTaskMessages } from './prompts.js'
 
 const nowDay = () => new Date().toISOString().slice(0, 10)
 
+/**
+ * 类型归一（修复 v1 旧目标无 type 字段被误判为客观的问题）。
+ * 判定原则（产品铁律）：客观 = 只回答"是/不是"就能完成量化；主观 = 量化需要具体数据。
+ * 启发式兜底：含数据采集动词（记录/写下/复盘/总结/称/量/拍照/整理/感受/吃了什么）→ journal。
+ */
+export function normalizeGoals(profile) {
+  for (const g of profile.goals || []) {
+    for (const s of g.steps || []) {
+      if (!s.type) {
+        s.type = /记录|写下|复盘|总结|称重|称一|测量|拍照|整理|感受|吃了什么|写一篇|写下|总结/.test(s.step) ? 'journal' : 'checkin'
+      }
+      if (!Array.isArray(s.options)) s.options = []
+      if (!Array.isArray(s.logs)) s.logs = []
+      if (!Array.isArray(s.streakAwarded)) s.streakAwarded = []
+    }
+  }
+  return profile
+}
+
 /* ---------------- 创建 ---------------- */
 
 /**
@@ -61,6 +80,7 @@ export function createGoalFromSkill(profile, skill, fallbackText = '') {
  * 直接修改传入的 profile 对象，返回本次产生的更新列表。调用方负责加锁与落盘。
  */
 export async function syncGoalsWithText(profile, text, source = 'record') {
+  normalizeGoals(profile)
   const active = (profile.goals || []).filter((g) => g.status === 'active')
   const t = String(text || '').trim()
   if (!active.length || !t) return { updates: [] }
@@ -362,6 +382,7 @@ function daysBetween(a, b) {
 
 /** 活跃目标摘要（注入小星/报告提示词用；控制体积只给关键字段） */
 export function goalsSummaryForPrompt(profile) {
+  normalizeGoals(profile)
   return (profile.goals || [])
     .filter((g) => g.status === 'active')
     .slice(0, 5)
