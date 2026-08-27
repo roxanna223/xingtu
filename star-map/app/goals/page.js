@@ -18,6 +18,12 @@ const TYPE_NAME = {
 }
 const LEVEL_ICON = { 起步: '🌱', 铜星: '🥉', 银星: '🥈', 金星: '🥇' }
 
+/** 与后端一致的达标次数口径：取 metric 最后一个数字，默认 1 */
+function needCount(metric) {
+  const m = String(metric || '').match(/\d+/g)
+  return m && m.length ? Number(m[m.length - 1]) : 1
+}
+
 export default function GoalsPage() {
   const [goals, setGoals] = useState([])
   const [summary, setSummary] = useState([])
@@ -25,7 +31,7 @@ export default function GoalsPage() {
   const [text, setText] = useState('')
   const [busy, setBusy] = useState(false)
   const [toast, setToast] = useState('')
-  const [recForm, setRecForm] = useState(null) // { goalId, stepIndex, text }
+  const [form, setForm] = useState(null) // { goalId, stepIndex, mode:'journal'|'note', text }
 
   function showToast(msg) {
     setToast(msg)
@@ -62,7 +68,7 @@ export default function GoalsPage() {
       const d = await r.json()
       if (d.ok) {
         setText('')
-        showToast(`目标「${d.goal.title}」已拆解为 ${d.goal.steps.length} 步，加入计划栏目 🎯`)
+        showToast(`目标「${d.goal.title}」已拆解为 ${d.goal.steps.length} 步 🎯`)
         await load()
       } else {
         showToast(d.error || '创建失败，换个说法试试')
@@ -83,7 +89,7 @@ export default function GoalsPage() {
       const d = await r.json()
       if (d.ok) {
         showToast(okMsg)
-        setRecForm(null)
+        setForm(null)
         await load()
       } else {
         showToast(d.error || '操作失败')
@@ -98,11 +104,25 @@ export default function GoalsPage() {
     return (step.logs || []).find((l) => l.date === today) || null
   }
 
+  function streakOf(step) {
+    const logs = step.logs || []
+    if (!logs.length) return 0
+    const days = [...new Set(logs.map((l) => l.date))].sort()
+    const today = new Date().toISOString().slice(0, 10)
+    if (days.at(-1) !== today) return 0
+    let n = 0
+    for (let k = days.length - 1; k >= 0; k--) {
+      if (days[k] === new Date(Date.now() - n * 86400000).toISOString().slice(0, 10)) n++
+      else break
+    }
+    return n
+  }
+
   return (
     <div className="page">
       <div className="page-head">
         <h1>计划</h1>
-        <span className="sub">每日计划 · 打卡记录 · 彩蛋任务 · 积分激励{summary.length > 0 ? ` · 进行中 ${summary.length} 个` : ''}</span>
+        <span className="sub">主观任务写一写 · 客观任务点完成 · 达标自动进阶{summary.length > 0 ? ` · 进行中 ${summary.length} 个` : ''}</span>
       </div>
       <NavBar />
 
@@ -137,7 +157,7 @@ export default function GoalsPage() {
           <p style={{ fontSize: 15, marginBottom: 8 }}>还没有目标。</p>
           <p className="muted" style={{ lineHeight: 1.9 }}>
             在上面输入一个你想改变/达成的事，星图会把它拆成带量化指标的步骤。<br />
-            每天打卡/记录会累积积分，还有每天刷新的彩蛋小任务；记录与聊天也会自动同步进度。
+            主观任务写一写、客观任务点完成，每天都有新彩蛋；记录与聊天也会自动同步进度。
           </p>
         </div>
       )}
@@ -190,10 +210,10 @@ export default function GoalsPage() {
                   <div className="bonus-task">{bonus.task}</div>
                   {bonus.flavor && <div className="muted" style={{ fontSize: 11 }}>{bonus.flavor}</div>}
                   {bonus.doneAt ? (
-                    <div className="bonus-done">✓ 已领 +{bonus.points} 分，明天有新彩蛋</div>
+                    <div className="bonus-done">✓ 已领，明天有新彩蛋</div>
                   ) : (
-                    <button className="btn btn-ghost" onClick={() => act({ action: 'bonusDone', goalId: g.id }, `彩蛋完成 +${bonus.points} 分 🎁`)}>
-                      完成它 +{bonus.points}
+                    <button className="btn btn-ghost" onClick={() => act({ action: 'bonusDone', goalId: g.id }, '彩蛋完成 🎁')}>
+                      完成它
                     </button>
                   )}
                 </div>
@@ -202,30 +222,31 @@ export default function GoalsPage() {
               <div className="goal-steps">
                 {g.steps.map((s, i) => {
                   const log = todayLog(s)
-                  const streakN = (s.logs || []).length
-                    ? (() => {
-                        const days = [...new Set(s.logs.map((l) => l.date))].sort()
-                        const today = new Date().toISOString().slice(0, 10)
-                        if (days.at(-1) !== today) return 0
-                        let n = 0
-                        for (let k = days.length - 1; k >= 0; k--) {
-                          if (days[k] === new Date(Date.now() - n * 86400000).toISOString().slice(0, 10)) n++
-                          else break
-                        }
-                        return n
-                      })()
-                    : 0
-                  const open = recForm && recForm.goalId === g.id && recForm.stepIndex === i
+                  const streakN = streakOf(s)
+                  const doneCount = new Set((s.logs || []).map((l) => l.date)).size
+                  const need = needCount(s.metric)
+                  const open = form && form.goalId === g.id && form.stepIndex === i
+                  const isJournal = s.type === 'journal'
                   return (
                     <div key={i} className={`goal-step ${s.status === 'done' ? 'done' : ''}`}>
                       <span className="goal-idx">{s.status === 'done' ? '✓' : i + 1}</span>
                       <div style={{ flex: 1 }}>
-                        <div className="goal-text">{s.step}</div>
-                        <div className="muted" style={{ fontSize: 12 }}>
-                          指标：{s.metric}
-                          {s.doneAt ? ` · ${s.doneAt} 完成` : streakN >= 2 ? ` · 🔥 连续 ${streakN} 天` : ''}
+                        <div className="goal-text">
+                          {s.step}
+                          <span className="goal-tag">{isJournal ? '✍️ 主观' : '☑️ 客观'}</span>
                         </div>
-                        {log && <div className="step-log">📝 今天：{log.text}{log.points ? `（+${log.points}分）` : ''}</div>}
+                        <div className="muted" style={{ fontSize: 12 }}>
+                          {s.doneAt
+                            ? `${s.doneAt} 完成`
+                            : doneCount > 0
+                              ? `${s.metric} · 已 ${Math.min(doneCount, need)}/${need}${streakN >= 2 ? ` · 🔥连续 ${streakN} 天` : ''}`
+                              : s.metric}
+                        </div>
+                        {log && (
+                          <div className="step-log">
+                            ✓ 今日已{isJournal ? '记录' : '完成'}：{log.text || '完成'}
+                          </div>
+                        )}
                         {open && (
                           <div className="record-form">
                             {(s.options || []).length > 0 && (
@@ -233,8 +254,8 @@ export default function GoalsPage() {
                                 {(s.options || []).map((o) => (
                                   <button
                                     key={o}
-                                    className={recForm.text === o ? 'record-chip on' : 'record-chip'}
-                                    onClick={() => setRecForm((f) => ({ ...f, text: o }))}
+                                    className={form.text === o ? 'record-chip on' : 'record-chip'}
+                                    onClick={() => setForm((f) => ({ ...f, text: o }))}
                                   >
                                     {o}
                                   </button>
@@ -243,19 +264,24 @@ export default function GoalsPage() {
                             )}
                             <input
                               type="text"
-                              value={recForm.text}
-                              onChange={(e) => setRecForm((f) => ({ ...f, text: e.target.value }))}
-                              placeholder={s.type === 'journal' ? '记录一下今天的情况（或点上面选项）' : '备注（可选）'}
+                              value={form.text}
+                              onChange={(e) => setForm((f) => ({ ...f, text: e.target.value }))}
+                              placeholder={form.mode === 'note' ? '补一句备注（可选）' : isJournal ? '写一写今天的情况（或点上面选项）' : '备注（可选）'}
                               maxLength={300}
                             />
                             <div className="row" style={{ marginTop: 8, gap: 8 }}>
                               <button
                                 className="btn btn-primary"
-                                onClick={() => act({ action: 'stepRecord', goalId: g.id, stepIndex: i, text: recForm.text }, s.type === 'journal' ? '已记录 +10 分 📝' : '已打卡 +5 分 🔥')}
+                                onClick={() =>
+                                  act(
+                                    { action: form.mode === 'note' ? 'stepNote' : 'stepRecord', goalId: g.id, stepIndex: i, text: form.text },
+                                    form.mode === 'note' ? '备注已保存' : isJournal ? '已记录 ✓' : '已完成 ✓'
+                                  )
+                                }
                               >
-                                提交{s.type === 'journal' ? '（+10）' : '（+5）'}
+                                {form.mode === 'note' ? '保存备注' : isJournal ? '提交记录' : '完成'}
                               </button>
-                              <button className="btn btn-ghost" onClick={() => setRecForm(null)}>取消</button>
+                              <button className="btn btn-ghost" onClick={() => setForm(null)}>取消</button>
                             </div>
                           </div>
                         )}
@@ -263,18 +289,21 @@ export default function GoalsPage() {
                       {g.status === 'active' && s.status === 'todo' && !open && (
                         <div className="step-actions">
                           {log ? (
-                            <span className="muted" style={{ fontSize: 12 }}>已打卡 ✓</span>
+                            <button className="login-skip" onClick={() => setForm({ goalId: g.id, stepIndex: i, mode: 'note', text: log.text || '' })}>
+                              ✏️ 备注
+                            </button>
+                          ) : isJournal ? (
+                            <button className="btn btn-primary btn-sm" onClick={() => setForm({ goalId: g.id, stepIndex: i, mode: 'journal', text: '' })}>
+                              ✍️ 写一写
+                            </button>
                           ) : (
-                            <button className="login-skip" onClick={() => setRecForm({ goalId: g.id, stepIndex: i, text: '' })}>
-                              {s.type === 'journal' ? '✍️ 记录 +10' : '🔥 打卡 +5'}
+                            <button
+                              className="btn btn-primary btn-sm"
+                              onClick={() => act({ action: 'stepRecord', goalId: g.id, stepIndex: i, text: '' }, '已完成 ✓')}
+                            >
+                              ✓ 完成
                             </button>
                           )}
-                          <button
-                            className="login-skip muted"
-                            onClick={() => act({ action: 'toggleStep', goalId: g.id, stepIndex: i, done: true }, '已直接标记完成')}
-                          >
-                            直接完成
-                          </button>
                         </div>
                       )}
                       {g.status === 'active' && s.status === 'done' && (

@@ -7,6 +7,7 @@ import {
   deleteGoal,
   goalsSummaryForPrompt,
   stepRecord,
+  stepNote,
   completeBonus,
   ensureDailyBonus,
 } from '@/lib/goals'
@@ -73,6 +74,7 @@ export async function POST(req) {
       const p = readProfile(userId)
       let r
       if (action === 'stepRecord') r = stepRecord(p, { goalId, stepIndex: Number(stepIndex), text })
+      else if (action === 'stepNote') r = stepNote(p, { goalId, stepIndex: Number(stepIndex), text })
       else if (action === 'bonusDone') r = completeBonus(p, { goalId })
       else if (action === 'toggleStep') r = toggleGoalStep(p, { goalId, stepIndex: Number(stepIndex), done: !!done })
       else if (action === 'archive') r = archiveGoal(p, goalId)

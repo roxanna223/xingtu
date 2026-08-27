@@ -295,6 +295,22 @@ export function completeBonus(profile, { goalId }) {
   return { ok: true, goal }
 }
 
+/** 补记/修改今天的备注（客观任务完成后想补一句，或修正主观记录内容）；不加分不重复计算 */
+export function stepNote(profile, { goalId, stepIndex, text }) {
+  const goal = (profile.goals || []).find((g) => g.id === goalId)
+  if (!goal) return { error: '目标不存在' }
+  const step = goal.steps[stepIndex]
+  if (!step) return { error: '步骤不存在' }
+  const today = nowDay()
+  step.logs = step.logs || []
+  const log = step.logs.find((l) => l.date === today)
+  if (!log) return { error: '今天还没有打卡，先完成再补备注' }
+  const t = String(text || '').trim().slice(0, 300)
+  if (!t) return { error: '备注内容为空' }
+  log.text = t
+  return { ok: true, goal }
+}
+
 /* ---------------- 手动操作 ---------------- */
 
 export function toggleGoalStep(profile, { goalId, stepIndex, done }) {
