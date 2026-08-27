@@ -115,7 +115,7 @@ export function countUsers() {
 
 /* ---------------- profiles(画像) ---------------- */
 
-const PROFILE_KEYS = ['topics', 'edges', 'feedback_log', 'emotion_series', 'reports', 'period_reports', 'behavior', 'last_report', 'opener_idx', 'last_openers', 'adapt_log', 'generating']
+const PROFILE_KEYS = ['topics', 'edges', 'feedback_log', 'emotion_series', 'reports', 'period_reports', 'behavior', 'last_report', 'opener_idx', 'last_openers', 'adapt_log', 'generating', 'adoptions']
 
 export function readProfile(userId) {
   const d = getDB()
@@ -143,6 +143,7 @@ export function readProfile(userId) {
     lastOpeners: [],
     adaptLog: [],
     generating: false,
+    adoptions: [],
   }
   if (!row) return base
   const p = base
@@ -159,20 +160,21 @@ export function readProfile(userId) {
   p.adaptLog = jparse(row.adapt_log, [])
   p.generating = !!row.generating
   p.crisisFlag = !!row.crisis_flag
+  p.adoptions = jparse(row.adoptions, [])
   return p
 }
 
 export function writeProfile(userId, p) {
   const d = getDB()
   d.prepare(
-    `INSERT INTO profiles (user_id, topics, edges, feedback_log, emotion_series, reports, period_reports, behavior, last_report, opener_idx, last_openers, adapt_log, generating, crisis_flag, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `INSERT INTO profiles (user_id, topics, edges, feedback_log, emotion_series, reports, period_reports, behavior, last_report, opener_idx, last_openers, adapt_log, generating, crisis_flag, adoptions, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(user_id) DO UPDATE SET
        topics=excluded.topics, edges=excluded.edges, feedback_log=excluded.feedback_log,
        emotion_series=excluded.emotion_series, reports=excluded.reports, period_reports=excluded.period_reports,
        behavior=excluded.behavior, last_report=excluded.last_report, opener_idx=excluded.opener_idx,
        last_openers=excluded.last_openers, adapt_log=excluded.adapt_log, generating=excluded.generating,
-       crisis_flag=excluded.crisis_flag, updated_at=excluded.updated_at`
+       crisis_flag=excluded.crisis_flag, adoptions=excluded.adoptions, updated_at=excluded.updated_at`
   ).run(
     userId,
     jstr(p.topics ?? []),
@@ -188,6 +190,7 @@ export function writeProfile(userId, p) {
     jstr(p.adaptLog ?? []),
     p.generating ? 1 : 0,
     p.crisisFlag ? 1 : 0,
+    jstr(p.adoptions ?? []),
     now()
   )
   // 用户维度字段(engine/onboard 会改 p.user.*)同步落 users 表,避免丢失

@@ -1,5 +1,5 @@
 import { readProfile, writeProfile, readDays, withStoreLock } from '@/lib/store'
-import { generateReport, generatePeriodReport, PERIOD_CACHE_VERSION } from '@/lib/engine'
+import { generateReport, generatePeriodReport, PERIOD_CACHE_VERSION, adoptionContext } from '@/lib/engine'
 import { emotionCountsFromTrack, mixEmotionColors, parseTrackText } from '@/lib/colors'
 import { detectIntent, patternTopics } from '@/lib/intent'
 import { aggregateRange, currentOrLastComplete, RANGES } from '@/lib/period'
@@ -36,9 +36,16 @@ export async function GET(req) {
         const period = currentOrLastComplete(range, todayStr)
         const cached = p.periodReports?.[range]
         if (!refresh && cached && cached.generatedAt && cached.cacheVersion === PERIOD_CACHE_VERSION && cached.start === period.start) {
-          return Response.json({ ...cached, range, periodLabel: period.periodLabel })
+          const adoption = (p.adoptions || []).find((a) => a.reportKey === `${range}:${period.start}`) || null
+          return Response.json({ ...cached, range, periodLabel: period.periodLabel, adoption })
         }
         const agg = aggregateRange(p, days, range, todayStr)
+        // P0 采纳闭环：周期报告注入采纳上下文与采纳率（北极星过程指标）
+        agg.adoptions = adoptionContext(p, { start: period.start, end: period.end })
+        const done = agg.adoptions.filter((a) => a.adopted).length
+        agg.adoptionNote = agg.adoptions.length
+          ? `本周期标记了 ${agg.adoptions.length} 条建议：已做 ${done} 条、还没做 ${agg.adoptions.length - done} 条。`
+          : ''
         const rep = await generatePeriodReport(p, agg)
         rep.range = range
         rep.start = period.start
@@ -46,10 +53,12 @@ export async function GET(req) {
         rep.periodLabel = period.periodLabel
         rep.dataNote = agg.dataNote
         rep.totalDays = agg.totalDays
+        rep.adoptionNote = agg.adoptionNote
         p.periodReports = p.periodReports || {}
         p.periodReports[range] = rep
         writeProfile(userId, p)
-        return Response.json({ ...rep, range })
+        const adoption = (p.adoptions || []).find((a) => a.reportKey === `${range}:${period.start}`) || null
+        return Response.json({ ...rep, range, adoption })
       }
 
       /* ---------- 最新报告正在后台生成时，立即返回状态，不阻塞 ---------- */
@@ -59,8 +68,9 @@ export async function GET(req) {
 
       /* ---------- 历史日报告：首看生成后缓存，refresh 才重新生成 ---------- */
       if (date) {
+        const adoption = (p.adoptions || []).find((a) => a.reportKey === `day:${date}`) || null
         if (!refresh && p.reports?.[date] && p.reports[date].generatedAt) {
-          return Response.json({ ...p.reports[date], dates, track: parseTrackText(p.reports[date].trackText || '') })
+          return Response.json({ ...p.reports[date], dates, track: parseTrackText(p.reports[date].trackText || ''), adoption })
         }
         const topics = (p.topics || []).filter((t) => (t.firstSeen || '') <= date)
         const ids = new Set(topics.map((t) => t.id))
@@ -70,6 +80,7 @@ export async function GET(req) {
           edges: (p.edges || []).filter((e) => ids.has(e.source) && ids.has(e.target)),
           emotionSeries: (p.emotionSeries || []).filter((e) => e.date <= date),
           feedbackLog: (p.feedbackLog || []).filter((f) => f.date <= date),
+          adoptions: (p.adoptions || []).filter((a) => a.date <= date),
         }
         const dayRecord = days.find((d) => d.date === date)
         const todayTrack = dayRecord?.q2 || ''
@@ -81,12 +92,13 @@ export async function GET(req) {
         p.reports = p.reports || {}
         p.reports[date] = report
         writeProfile(userId, p)
-        return Response.json({ ...report, dates, track: parseTrackText(todayTrack) })
+        return Response.json({ ...report, dates, track: parseTrackText(todayTrack), adoption })
       }
 
       /* ---------- 最新报告：当日缓存（有新记录后自动重新生成） ---------- */
       if (!tier && p.lastReport?.generatedAt && lastDay && p.lastReport.generatedAt >= lastDay) {
-        return Response.json({ ...p.lastReport, dates, track: parseTrackText(p.lastReport.trackText || '') })
+        const adoption = (p.adoptions || []).find((a) => a.reportKey === `day:${lastDay}`) || null
+        return Response.json({ ...p.lastReport, dates, track: parseTrackText(p.lastReport.trackText || ''), adoption })
       }
       const dayRecord = days.at(-1)
       const todayTrack = dayRecord?.q2 || ''
@@ -96,7 +108,8 @@ export async function GET(req) {
       report.moodColor = report.moodColor || mixEmotionColors(emotionCountsFromTrack(todayTrack))
       report.trackText = todayTrack
       writeProfile(userId, p)
-      return Response.json({ ...report, dates, track: parseTrackText(todayTrack) })
+      const adoption = (p.adoptions || []).find((a) => a.reportKey === `day:${lastDay}`) || null
+      return Response.json({ ...report, dates, track: parseTrackText(todayTrack), adoption })
     })
     trackReq(req, 'report_view', '/api/report', { range: new URL(req.url).searchParams.get('range'), date: new URL(req.url).searchParams.get('date') })
     return res

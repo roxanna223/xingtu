@@ -18,6 +18,8 @@ export default function ReportPage() {
   const [sent, setSent] = useState(false)
   const [obsVoted, setObsVoted] = useState({})
   const [toast, setToast] = useState('')
+  const [adoption, setAdoption] = useState(null) // 本报告建议的采纳标记（已存证）
+  const [adopting, setAdopting] = useState(false)
 
   useEffect(() => {
     fetch('/api/reports').then((r) => r.json()).then((d) => setHistory(d.reports || []))
@@ -34,6 +36,7 @@ export default function ReportPage() {
       .then((res) => (res.ok ? res.json() : Promise.reject(new Error(String(res.status)))))
       .then((data) => {
         setReport(data)
+        setAdoption(data.adoption || null)
         setPhase('ready')
         // 报告正在后台生成：4 秒后自动重试
         if (data.generating) {
@@ -52,6 +55,7 @@ export default function ReportPage() {
     setRange(r)
     setDate('')
     setObsVoted({})
+    setAdoption(null)
     load(tier, '', r)
   }
 
@@ -85,6 +89,28 @@ export default function ReportPage() {
       showToast(ok ? '已记下，谢谢确认' : '已记下，我会调整观察方式')
     } catch {
       showToast('反馈失败，稍后再试')
+    }
+  }
+
+  async function sendAdoption(adopted) {
+    setAdopting(true)
+    try {
+      const r = await fetch('/api/adoption', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ range: range === 'day' ? 'day' : range, date: range === 'day' ? date : '', adopted }),
+      })
+      const data = await r.json()
+      if (!r.ok) {
+        showToast(data.error || '标记失败，稍后再试')
+        return
+      }
+      setAdoption({ adopted: data.adopted, reportKey: data.reportKey, date: new Date().toISOString().slice(0, 10) })
+      showToast(`已记下${data.topicName ? `（主题：${data.topicName}）` : ''}。下次报告会回顾这条建议的效果。`)
+    } catch {
+      showToast('标记失败，稍后再试')
+    } finally {
+      setAdopting(false)
     }
   }
 
@@ -271,7 +297,29 @@ export default function ReportPage() {
               <div className="report-sec">
                 <h3>可以试试</h3>
                 <div className="path-card">{report.suggestion}</div>
+                {!adoption ? (
+                  <div className="feedback-row" style={{ marginTop: 12 }}>
+                    <button className="btn btn-ghost" disabled={adopting} onClick={() => sendAdoption(true)}>✅ 我做到了</button>
+                    <button className="btn btn-ghost" disabled={adopting} onClick={() => sendAdoption(false)}>✗ 还没做</button>
+                    <span className="muted">标记后，下次报告会回顾这条建议的效果</span>
+                  </div>
+                ) : (
+                  <p className="muted" style={{ margin: '12px 0 0', fontSize: 13 }}>
+                    已记下：这条建议你标记「{adoption.adopted ? '已做到' : '还没做'}」✓ 下次报告会一起回顾。
+                  </p>
+                )}
               </div>
+            )}
+
+            {report.adoptionReview && (
+              <div className="report-sec">
+                <h3>回看</h3>
+                <p style={{ fontSize: 15, lineHeight: 1.9, margin: 0 }}>{report.adoptionReview}</p>
+              </div>
+            )}
+
+            {range !== 'day' && report.adoptionNote && (
+              <p className="muted" style={{ fontSize: 13, margin: '4px 2px 0' }}>📌 {report.adoptionNote}</p>
             )}
 
             <div className="report-sec">

@@ -163,18 +163,28 @@ function mergeIntoProfile(profile, topics, record) {
 export async function generateReport(profile, tier, todayTrack = '', todayRecord = null, intent = 'none', patterns = []) {
   const cfg = llmConfig()
   let report
+  let base = null
   if (cfg.mock) {
     report = mockReport(profile, todayTrack, todayRecord, intent, patterns)
   } else {
     try {
       const raw = await callLLM(reportMessages(profile, tier, todayTrack, todayRecord, intent, patterns))
       const parsed = parseJson(raw)
-      report = parsed && (parsed.playback || parsed.observations) ? { ...mockReport(profile, todayTrack, todayRecord, intent, patterns), ...parsed } : mockReport(profile, todayTrack, todayRecord, intent, patterns)
+      base = mockReport(profile, todayTrack, todayRecord, intent, patterns)
+      report = parsed && (parsed.playback || parsed.observations) ? { ...base, ...parsed } : base
     } catch (e) {
       console.warn('[engine] LLM 报告失败，降级 Mock：', e.message)
       report = mockReport(profile, todayTrack, todayRecord, intent, patterns)
     }
   }
+  // 采纳回顾兜底（LLM 与 Mock 都只引用真实数据；LLM 空输出时用确定性版本补齐）
+  if (!report.adoptionReview) report.adoptionReview = (base || report).adoptionReview || adoptionReviewFallback(profile)
+  // suggestionTopic 兜底：LLM 未给出时取主导域最高频主题；无建议则置空
+  if (report.suggestion && !report.suggestionTopic) {
+    const t = dominantTopic(profile)
+    report.suggestionTopic = t ? t.name : ''
+  }
+  if (!report.suggestion) report.suggestionTopic = ''
   report.generatedAt = today()
   report.crisis = report.crisis || !!profile.crisisFlag
 
@@ -224,6 +234,8 @@ function mockReport(profile, todayTrack = '', todayRecord = null, intent = 'none
     playback: free ? `今天你提到：${free}${free.length >= 90 ? '…' : ''}` : '今天还没有记录。',
     observations,
     suggestion,
+    suggestionTopic: suggestion ? (topics.find((t) => t.domain === dom) || topics[0])?.name || '' : '',
+    adoptionReview: adoptionReviewFallback(profile),
     nextQuestion: topTopics[0]
       ? `明天我们可以只聊一个问题：${topTopics[0]} 最近让你最困扰的具体场景是什么？`
       : '明天我们聊聊：最近一周里最让你有能量的一个时刻是什么？',
@@ -268,6 +280,91 @@ function pathFor(domain) {
     },
   }
   return P[domain] || P['自我']
+}
+
+/* ---------------- 建议采纳闭环（P0 · 指路验证 Q6） ---------------- */
+
+/**
+ * 用户对某份报告的建议标记「已做/未做」。
+ * 落三处：① adoptions 存证（含标记时刻主题极性快照，供后续报告回顾变化）
+ *        ② 主题执行标记 actionState（报告可直接读取"这条建议的执行状态"）
+ *        ③ adaptLog 审计（自迭代 SCALE 闭环的 Log 环节）
+ * 同一份报告重复标记 = 更新，不重复累积。
+ */
+export function applyAdoption(profile, { reportKey, suggestion, adopted, date, reportDay, suggestionTopicName }) {
+  const topics = profile.topics || []
+  // 解析建议指向的主题：优先报告生成的 suggestionTopic，兜底主导域最高频主题
+  let topic = suggestionTopicName ? topics.find((t) => t.name === suggestionTopicName) : null
+  if (!topic) topic = dominantTopic(profile)
+  profile.adoptions = profile.adoptions || []
+  const rec = {
+    id: 'ad' + Math.random().toString(36).slice(2, 8),
+    date,
+    reportDay: reportDay || null, // 报告所属日期（周期归属用它，不用标记日期）
+    reportKey,
+    suggestion: String(suggestion || '').slice(0, 120),
+    adopted: !!adopted,
+    topicId: topic ? topic.id : null,
+    topicName: topic ? topic.name : null,
+    polarityAtAdoption: topic ? topic.polarity : null,
+  }
+  const idx = profile.adoptions.findIndex((a) => a.reportKey === reportKey)
+  if (idx >= 0) profile.adoptions[idx] = { ...profile.adoptions[idx], ...rec, id: profile.adoptions[idx].id }
+  else profile.adoptions.push(rec)
+  if (topic) topic.actionState = { adopted: !!adopted, date, reportKey }
+  profile.adaptLog = profile.adaptLog || []
+  profile.adaptLog.push({ date, type: 'adoption', reportKey, adopted: !!adopted, topicId: topic ? topic.id : null })
+  return rec
+}
+
+/** 主导域最高频主题（无主题时为 null） */
+function dominantTopic(profile) {
+  const topics = profile.topics || []
+  if (!topics.length) return null
+  const domCount = {}
+  for (const t of topics) domCount[t.domain] = (domCount[t.domain] || 0) + (t.freq || 1)
+  const dom = Object.entries(domCount).sort((a, b) => b[1] - a[1])[0]?.[0]
+  const inDom = topics.filter((t) => t.domain === dom).sort((a, b) => (b.freq || 0) - (a.freq || 0))
+  return inDom[0] || [...topics].sort((a, b) => (b.freq || 0) - (a.freq || 0))[0]
+}
+
+/**
+ * 采纳上下文（注入报告提示词用）：每条带「标记时刻极性 vs 当前极性」。
+ * range 传 {start,end} 时只取区间内标记；否则取最近 5 条。
+ */
+export function adoptionContext(profile, range = null) {
+  const all = profile.adoptions || []
+  const list = range
+    ? all.filter((a) => (a.reportDay || a.date) >= range.start && (a.reportDay || a.date) <= range.end)
+    : all.slice(-5)
+  return list.map((a) => {
+    const t = (profile.topics || []).find((x) => x.id === a.topicId || x.name === a.topicName)
+    return {
+      date: a.date,
+      suggestion: a.suggestion,
+      adopted: a.adopted,
+      topicName: a.topicName || null,
+      polarityAtAdoption: a.polarityAtAdoption,
+      currentPolarity: t ? t.polarity : null,
+    }
+  })
+}
+
+/**
+ * 采纳回顾确定性兜底：只引用真实数据，无数据/无变化时返回空串。
+ * LLM 未产出 adoptionReview 时用此填充（Mock 模式也走这里）。
+ */
+function adoptionReviewFallback(profile) {
+  const adoptions = profile.adoptions || []
+  if (!adoptions.length) return ''
+  const a = adoptions[adoptions.length - 1]
+  const t = (profile.topics || []).find((x) => x.id === a.topicId || x.name === a.topicName)
+  if (!t || a.polarityAtAdoption == null) return ''
+  const sug = String(a.suggestion || '').slice(0, 40)
+  if (a.adopted) {
+    return `上次建议「${sug}…」，你标记做到了。现在「${t.name}」的极性是 ${t.polarity}（标记时是 ${a.polarityAtAdoption}）。`
+  }
+  return `上次建议「${sug}…」，你标记还没做。没关系，我们可以在下次记录里一起看看怎么调整。`
 }
 
 /* ---------------- 反馈回写 ---------------- */
@@ -447,6 +544,8 @@ export function minimalPeriodReport(agg) {
     trends: [],
     observations: [],
     suggestion: '',
+    suggestionTopic: '',
+    adoptionReview: '',
     nextQuestion: '从今天开始，哪怕只写一句话，这个周期也会留下你的痕迹。',
     moodColor: '#8f9db8', // 雾灰（中性，不暗示）
     moodNote: '这个周期还没有留下心情颜色。',
@@ -460,18 +559,23 @@ export async function generatePeriodReport(profile, agg) {
   }
   const cfg = llmConfig()
   let report
+  const base = mockPeriodReport(agg)
   if (cfg.mock) {
-    report = mockPeriodReport(agg)
+    report = base
   } else {
     try {
       const raw = await callLLM(periodReportMessages(profile, agg))
       const parsed = parseJson(raw)
-      report = parsed && (parsed.playback || parsed.trends) ? { ...mockPeriodReport(agg), ...parsed } : mockPeriodReport(agg)
+      report = parsed && (parsed.playback || parsed.trends) ? { ...base, ...parsed } : base
     } catch (e) {
       console.warn('[engine] 周期报告失败，降级 Mock：', e.message)
-      report = mockPeriodReport(agg)
+      report = base
     }
   }
+  // 采纳回顾兜底：LLM 空输出时用确定性版本补齐（同样只引用真实数据）
+  if (!report.adoptionReview) report.adoptionReview = base.adoptionReview
+  if (report.suggestion && !report.suggestionTopic) report.suggestionTopic = (agg.topTopics || [])[0]?.name || ''
+  if (!report.suggestion) report.suggestionTopic = ''
   report.generatedAt = today()
   report.cacheVersion = PERIOD_CACHE_VERSION
   return report
@@ -492,6 +596,16 @@ function mockPeriodReport(agg) {
     text: `「${t.name}」贯穿了这段时间的${t.domain}域记录`,
     quote: t.quotes?.[0] || '',
   }))
+  // 采纳回顾（确定性）：只引用 agg.adoptions 里的真实极性快照与当前极性
+  let adoptionReview = ''
+  const adopt = (agg.adoptions || []).filter((a) => a.currentPolarity != null && a.polarityAtAdoption != null)
+  if (adopt.length) {
+    const a = adopt[adopt.length - 1]
+    const sug = String(a.suggestion || '').slice(0, 40)
+    adoptionReview = a.adopted
+      ? `上次建议「${sug}…」，你标记做到了。现在「${a.topicName}」的极性是 ${a.currentPolarity}（标记时是 ${a.polarityAtAdoption}）。`
+      : `上次建议「${sug}…」，你标记还没做。没关系，我们可以在下次记录里一起看看怎么调整。`
+  }
   return {
     playback: agg.dayCount
       ? `${prefix}${agg.periodLabel || '这个周期'}里，你记录了 ${agg.dayCount} 天${agg.topTopics?.length ? `，最常出现的是「${agg.topTopics[0].name}」` : ''}。`
@@ -499,6 +613,8 @@ function mockPeriodReport(agg) {
     trends,
     observations,
     suggestion: '',
+    suggestionTopic: '',
+    adoptionReview,
     nextQuestion: '下一个周期，你想让哪一件事发生变化？',
     moodColor: agg.moodColor,
     moodNote: topEm ? `这个周期的颜色主要来自「${topEm[0]}」。` : '这个周期还没有留下心情颜色。',

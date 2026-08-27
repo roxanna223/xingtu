@@ -86,6 +86,17 @@ export function reportMessages(profile, tier, todayTrack = '', todayRecord = nul
     feedbackLog: (profile.feedbackLog || []).slice(-5),
     emotionSeries: (profile.emotionSeries || []).slice(-7),
     behavior: profile.behavior || null,
+    adoptions: (profile.adoptions || []).slice(-5).map((a) => ({
+      date: a.date,
+      suggestion: a.suggestion,
+      adopted: a.adopted,
+      topicName: a.topicName || null,
+      polarityAtAdoption: a.polarityAtAdoption,
+      currentPolarity: (() => {
+        const t = (profile.topics || []).find((x) => x.name === a.topicName || (a.topicId && x.id === a.topicId))
+        return t ? t.polarity : null
+      })(),
+    })),
   })
 
   const sys = `你是「星图」产品的状态分析师。基于用户今天的记录与其长期画像，生成一份**温和、有据、像朋友转述**的报告。报告将直接展示给用户。
@@ -111,8 +122,13 @@ export function reportMessages(profile, tier, todayTrack = '', todayRecord = nul
 - 仅当满足以下至少一条时才给出 suggestion：a) intent=advice（用户今天明确求助）；b) 该主题在长期模式列表中；
 - intent=vent（纯倾诉）或一次性事件：suggestion 必须为空字符串——只承接情绪；可在 observations 末尾温和收一句"这件事不必再消耗你的精力。"
 
+建议回顾（adoptionReview，指路验证闭环）：
+- 若"建议采纳记录"中有用户对过往建议的标记（已做/未做），可以在 observations 末尾或 suggestion 之后用一句话回顾效果，例如"上周建议你投递 3 份岗位，你标记做到了，本周「面试焦虑」的情绪从 -0.6 回到 -0.2"；
+- 只能引用采纳记录与画像数据里真实存在的主题与极性数值；极性无变化、主题已不存在或没有采纳记录时，adoptionReview 必须为空字符串，绝不编造；
+- 最多回顾最近一条；只陈述数据，不夸奖、不指责；用户标记"未做"时语气温和（如"你标记还没做，没关系，我们可以换一条更适合你的路"）。
+
 输出 JSON（字段固定）：
-{"playback":"60~120 字，客观重述今天发生了什么","observations":[{"text":"一条观察","quote":"逐字取自用户原话的一句"}],"suggestion":"可执行的一小步建议（仅当用户表达了困扰或目标时给出，否则为空字符串）","nextQuestion":"明天的一个具体话题","moodNote":"基于今日心情轨迹的一句话颜色解读"}
+{"playback":"60~120 字，客观重述今天发生了什么","observations":[{"text":"一条观察","quote":"逐字取自用户原话的一句"}],"suggestion":"可执行的一小步建议（仅当用户表达了困扰或目标时给出，否则为空字符串）","suggestionTopic":"建议针对的主题名（必须逐字来自画像主题列表；suggestion 为空时为空字符串）","adoptionReview":"一句采纳回顾或空字符串","nextQuestion":"明天的一个具体话题","moodNote":"基于今日心情轨迹的一句话颜色解读"}
 
 ${wantResult
     ? '本用户是结果导向型：observations 每条 ≤20 字，suggestion 必须具体到动作，不使用专业术语。'
@@ -240,6 +256,8 @@ export function periodReportMessages(profile, agg) {
 - 情绪分布：${JSON.stringify(agg.emotionDist || {})}；
 - 周期活跃主题：${JSON.stringify(agg.topTopics || [])}；
 - 心情轨迹文本：${agg.trackAll ? agg.trackAll.slice(0, 500) : '（暂无）'}；
+- 建议采纳记录（本周期内用户对建议的标记）：${JSON.stringify(agg.adoptions || [])}；
+- 建议采纳率：${agg.adoptionNote || '本周期还没有建议标记'}；
 - 用户画像（仅供参考）：${JSON.stringify({ lifeTask: profile.user?.cohort?.lifeTask, careerStage: profile.user?.careerStage })}。
 
 规则（与日报同一套价值观）：
@@ -249,10 +267,11 @@ export function periodReportMessages(profile, agg) {
 4. 建议生成四问过滤：对象只能是自己、可控、不伤关系、长期成长有用；纯记录无困扰时 suggestion 为空；
 5. 禁用命理/玄学词汇；不贴人格标签；
 6. **全文一律用"你"称呼用户，禁止使用"您"**；
-7. trends 是 2~3 条客观趋势，必须能从数据中直接看出；数据不全面时不得编造趋势。
+7. trends 是 2~3 条客观趋势，必须能从数据中直接看出；数据不全面时不得编造趋势；
+8. 建议回顾（adoptionReview）：本周期有采纳标记时，用一句话回顾效果（如"上周建议你……，你标记做到了；本周「XX」的情绪从 -0.6 回到 -0.2"），只能引用采纳记录里真实存在的主题与极性数值，无变化则写空字符串，绝不编造；用户标记"未做"时语气温和。
 
 输出 JSON：
-{"playback":"周期整体回放，80~150 字","trends":["趋势1","趋势2"],"observations":[{"text":"观察","quote":"原话"}],"suggestion":"可执行建议或空字符串","nextQuestion":"下一周期的一个具体话题","moodNote":"周期心情色的一句话解读"}`
+{"playback":"周期整体回放，80~150 字","trends":["趋势1","趋势2"],"observations":[{"text":"观察","quote":"原话"}],"suggestion":"可执行建议或空字符串","suggestionTopic":"建议针对的主题名（必须逐字来自周期活跃主题；suggestion 为空时为空字符串）","adoptionReview":"一句采纳回顾或空字符串","nextQuestion":"下一周期的一个具体话题","moodNote":"周期心情色的一句话解读"}`
 
   return [
     { role: 'system', content: sys },

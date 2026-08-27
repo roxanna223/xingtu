@@ -147,6 +147,22 @@ function migrate(d) {
       throw e
     }
   }
+  if (v < 4) {
+    // v4:建议采纳存证(P0 建议采纳闭环 Q6/指路验证):用户对报告建议标记"已做/未做"落盘,
+    //     供后续报告回顾"上周建议 X,本周该主题极性 Y 变化"
+    d.exec('BEGIN')
+    try {
+      const cols = d.prepare('PRAGMA table_info(profiles)').all()
+      if (!cols.some((c) => c.name === 'adoptions')) {
+        d.exec("ALTER TABLE profiles ADD COLUMN adoptions TEXT NOT NULL DEFAULT '[]'")
+      }
+      d.exec('PRAGMA user_version = 4')
+      d.exec('COMMIT')
+    } catch (e) {
+      d.exec('ROLLBACK')
+      throw e
+    }
+  }
 }
 
 export function closeDB() {
