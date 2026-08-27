@@ -635,6 +635,33 @@ select option { background: var(--panel); color: var(--txt); }
 .goal-remind p { margin: 2px 0 0; font-size: 12px; color: var(--dim); }
 .goal-remind .arr { margin-left: auto; color: var(--green); }
 
+/* ---------- 目标系统 v2：积分 / 彩蛋 / 记录 ---------- */
+.goal-level { font-size: 12px; color: var(--yellow); font-weight: 700; margin-left: 6px; }
+.step-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.step-log {
+  margin-top: 6px; padding: 6px 10px; font-size: 12px; line-height: 1.6;
+  background: rgba(107, 220, 143, 0.08); border-left: 3px solid var(--green); color: var(--txt);
+}
+.record-form { margin-top: 8px; padding: 10px; background: rgba(0, 0, 0, 0.25); border: 2px solid var(--line-dim); }
+.record-form input { width: 100%; margin-top: 8px; }
+.record-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.record-chip {
+  background: transparent; border: 2px solid var(--line-dim); color: var(--txt);
+  font-size: 12px; padding: 4px 10px; cursor: pointer;
+}
+.record-chip.on { border-color: var(--green); background: rgba(107, 220, 143, 0.15); }
+.bonus-card {
+  margin: 10px 0 12px; padding: 12px 14px;
+  background: rgba(245, 199, 106, 0.06);
+  border: 2px solid var(--yellow); border-radius: 0;
+}
+.bonus-card.done { opacity: 0.75; }
+.bonus-head { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--yellow); font-weight: 800; letter-spacing: 1px; margin-bottom: 6px; }
+.bonus-pts { color: var(--green); }
+.bonus-task { font-size: 14px; line-height: 1.7; margin-bottom: 6px; }
+.bonus-done { margin-top: 8px; font-size: 12.5px; color: var(--green); }
+.bonus-card .btn { margin-top: 8px; }
+
 /* ---------- 心情轨迹 ---------- */
 .track-list { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
 .track-item {

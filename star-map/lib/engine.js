@@ -549,10 +549,15 @@ function goalsReminderLineForMock(goals) {
   const doing = list.find((g) => g.doneSteps > 0 && g.nextStep)
   const fresh = list.find((g) => g.doneSteps === 0)
   const idle = list.find((g) => g.idleDays >= 3)
-  if (doing) return `🎯 你的目标「${doing.title}」已完成 ${doing.doneSteps}/${doing.totalSteps}，下一步可以试试：${doing.nextStep}。`
-  if (idle) return `🎯 你的目标「${idle.title}」有 ${idle.idleDays} 天没更新了，今天想为它做点什么吗？`
-  if (fresh) return `🎯 你的目标「${fresh.title}」已经拆好 ${fresh.totalSteps} 步，随时可以从第 1 步开始。`
-  return ''
+  let line = ''
+  if (doing) line = `🎯 你的目标「${doing.title}」已完成 ${doing.doneSteps}/${doing.totalSteps}，下一步可以试试：${doing.nextStep}。`
+  else if (idle) line = `🎯 你的目标「${idle.title}」有 ${idle.idleDays} 天没更新了，今天想为它做点什么吗？`
+  else if (fresh) line = `🎯 你的目标「${fresh.title}」已经拆好 ${fresh.totalSteps} 步，随时可以从第 1 步开始。`
+  const withBonus = list.find((g) => g.bonusTask)
+  if (withBonus && withBonus.bonusTask) {
+    line += `\n\n🎁 今日彩蛋：${withBonus.bonusTask}（完成 +${withBonus.bonusPoints} 分）`
+  }
+  return line
 }
 
 /* ---------------- Skill：目标拆解（goalBreak，P0-2a 新增） ---------------- */
@@ -578,9 +583,9 @@ export function mockGoalBreak(text = '', summary = {}) {
       goal: target,
       summary: `把「${target}」变成可以走的三步`,
       steps: [
-        { step: `把「${target}」写成一句话，并写下现在的状态与想要的差距`, metric: '写 1 条目标陈述 + 1 条现状记录' },
-        { step: '今天完成一个 10 分钟的最小行动（只要动起来就算数）', metric: '完成 1 次并当天记录' },
-        { step: '一周后回看：对比行动前后你在星图里的记录', metric: '每周复盘 1 次，连续 2 周' },
+        { step: `把「${target}」写成一句话，并写下现在的状态与想要的差距`, metric: '写 1 条目标陈述 + 1 条现状记录', type: 'journal', options: ['写好了', '写了大概', '还没写'] },
+        { step: '今天完成一个 10 分钟的最小行动（只要动起来就算数）', metric: '完成 1 次并当天记录', type: 'checkin', options: [] },
+        { step: '一周后回看：对比行动前后你在星图里的记录', metric: '每周复盘 1 次，连续 2 周', type: 'journal', options: ['有变化', '变化不大', '没变化'] },
       ],
     },
   }

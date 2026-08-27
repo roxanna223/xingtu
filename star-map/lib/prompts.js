@@ -206,8 +206,9 @@ ${JSON.stringify(profileSummary)}
 - 承接情绪优先；不给医疗/投资建议；禁用命理、玄学、运势断言类词汇——"今日能量提示"只能说倾向与可能性，不说吉凶。
 
 ${isFirstTurn ? `目标提醒（本会话第一条回复，重要）：
-- 用户画像里有 goals 字段（进行中的目标：title/doneSteps/totalSteps/nextStep/idleDays/recentNotes）；
+- 用户画像里有 goals 字段（进行中的目标：title/doneSteps/totalSteps/nextStep/nextType/idleDays/points/level/bonusTask/bonusPoints）；
 - 在回复中自然带出 1~2 句目标进度提醒，放在承接用户情绪之后，例如"顺便说一句：你的目标「改掉熬夜」完成 2/5，今天可以试试第 3 步——睡前把手机放客厅"；
+- 若某目标有 bonusTask（今日彩蛋任务），可以一起提一句："今天还有个彩蛋小任务：……，完成 +15 分"；没有就跳过；
 - 若某目标 idleDays ≥3 可温和提一句"有 X 天没更新了"；没有进行中目标或话题明显不适宜时就不提；最多提 1 个目标，绝不啰嗦。` : ''}
 
 测验主持规则：
@@ -275,9 +276,10 @@ ${JSON.stringify(summary)}
 2. 不给医疗、投资、法律建议；不预测结果；禁用命理玄学词汇；
 3. 步骤 3~5 步，由易到难，第一步必须是"今天/明天就能做的最小行动"；
 4. 每个 metric 是可自证的小指标（如"完成 1 次""连续 3 天""写 1 条"），不用模糊词；
-5. goal 是目标本身的精炼标题（≤12 字，动宾结构，如"改掉熬夜"）；summary 用一句话把目标说清楚；title 固定为"目标拆解"；
-6. 只输出 JSON：
-{"reply":"承接用户的一句话(≤40字)","skill":{"id":"goalBreak","title":"目标拆解","goal":"目标标题","summary":"一句话概括目标","steps":[{"step":"步骤","metric":"量化指标"}]}}`
+5. 每个步骤标注 type：需要用户主观输入内容的步骤（如"记录一日三餐""写下感受""复盘"）→ "journal"，并给出 2~4 个快捷选项 options（用户点击即算记录，如早餐/午餐/晚餐/加餐）；纯行为打卡（如"运动 30 分钟""11 点前睡"）→ "checkin"（options 为空数组）；
+6. goal 是目标本身的精炼标题（≤12 字，动宾结构，如"改掉熬夜"）；summary 用一句话把目标说清楚；title 固定为"目标拆解"；
+7. 只输出 JSON：
+{"reply":"承接用户的一句话(≤40字)","skill":{"id":"goalBreak","title":"目标拆解","goal":"目标标题","summary":"一句话概括目标","steps":[{"step":"步骤","metric":"量化指标","type":"checkin","options":[]}]}}`
 
   return [
     { role: 'system', content: sys },
@@ -305,6 +307,27 @@ ${JSON.stringify(activeGoals.map((g) => ({ id: g.id, title: g.title, steps: g.st
   return [
     { role: 'system', content: sys },
     { role: 'user', content: `用户内容：${String(text || '').slice(0, 600)}` },
+  ]
+}
+
+/* ---------------- 每日彩蛋任务（bonus，目标系统 v2 激励维度） ---------------- */
+
+export function bonusTaskMessages(goal) {
+  const sys = `你是「星图」产品的激励设计师。用户有一个进行中的目标，请为"今天"生成一条个性化彩蛋小任务，作为每日计划里的奖励内容。
+
+用户目标：
+${JSON.stringify({ title: goal.title, summary: goal.summary, steps: goal.steps.filter((s) => s.status === 'todo').map((s) => ({ step: s.step, metric: s.metric, type: s.type })) })}
+
+规则：
+1. 任务和主线步骤互补、不重复；一天内能完成、门槛低、有趣味；
+2. 结合目标特点个性化（如减肥→尝试一种新蔬菜/走楼梯；早睡→睡前调暗灯光；学习→读 10 页书）；
+3. 不用医疗/投资建议，不制造压力，措辞轻松；
+4. points 按难度给 10/15/20 中的一个；flavor 一句话说明为什么选它（≤20 字）；
+5. 只输出 JSON：{"task":"任务描述(≤40字)","points":15,"flavor":"一句话理由"}`
+
+  return [
+    { role: 'system', content: sys },
+    { role: 'user', content: '请生成今天的彩蛋任务。' },
   ]
 }
 
