@@ -115,7 +115,7 @@ export function countUsers() {
 
 /* ---------------- profiles(画像) ---------------- */
 
-const PROFILE_KEYS = ['topics', 'edges', 'feedback_log', 'emotion_series', 'reports', 'period_reports', 'behavior', 'last_report', 'opener_idx', 'last_openers', 'adapt_log', 'generating', 'adoptions']
+const PROFILE_KEYS = ['topics', 'edges', 'feedback_log', 'emotion_series', 'reports', 'period_reports', 'behavior', 'last_report', 'opener_idx', 'last_openers', 'adapt_log', 'generating', 'adoptions', 'skill_log']
 
 export function readProfile(userId) {
   const d = getDB()
@@ -144,6 +144,7 @@ export function readProfile(userId) {
     adaptLog: [],
     generating: false,
     adoptions: [],
+    skillLog: [],
   }
   if (!row) return base
   const p = base
@@ -161,20 +162,21 @@ export function readProfile(userId) {
   p.generating = !!row.generating
   p.crisisFlag = !!row.crisis_flag
   p.adoptions = jparse(row.adoptions, [])
+  p.skillLog = jparse(row.skill_log, [])
   return p
 }
 
 export function writeProfile(userId, p) {
   const d = getDB()
   d.prepare(
-    `INSERT INTO profiles (user_id, topics, edges, feedback_log, emotion_series, reports, period_reports, behavior, last_report, opener_idx, last_openers, adapt_log, generating, crisis_flag, adoptions, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `INSERT INTO profiles (user_id, topics, edges, feedback_log, emotion_series, reports, period_reports, behavior, last_report, opener_idx, last_openers, adapt_log, generating, crisis_flag, adoptions, skill_log, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(user_id) DO UPDATE SET
        topics=excluded.topics, edges=excluded.edges, feedback_log=excluded.feedback_log,
        emotion_series=excluded.emotion_series, reports=excluded.reports, period_reports=excluded.period_reports,
        behavior=excluded.behavior, last_report=excluded.last_report, opener_idx=excluded.opener_idx,
        last_openers=excluded.last_openers, adapt_log=excluded.adapt_log, generating=excluded.generating,
-       crisis_flag=excluded.crisis_flag, adoptions=excluded.adoptions, updated_at=excluded.updated_at`
+       crisis_flag=excluded.crisis_flag, adoptions=excluded.adoptions, skill_log=excluded.skill_log, updated_at=excluded.updated_at`
   ).run(
     userId,
     jstr(p.topics ?? []),
@@ -191,6 +193,7 @@ export function writeProfile(userId, p) {
     p.generating ? 1 : 0,
     p.crisisFlag ? 1 : 0,
     jstr(p.adoptions ?? []),
+    jstr(p.skillLog ?? []),
     now()
   )
   // 用户维度字段(engine/onboard 会改 p.user.*)同步落 users 表,避免丢失
@@ -374,4 +377,21 @@ export function statsDaily(days = 7) {
     .prepare("SELECT event, COUNT(*) AS n FROM events WHERE ts >= datetime('now', ?) GROUP BY event ORDER BY n DESC")
     .all(`-${days - 1} days`)
   return { pv: pv.map((r) => ({ day: r.day, n: r.n })), active: active.map((r) => ({ day: r.day, n: r.n })), events: events.map((r) => ({ event: r.event, n: r.n })) }
+}
+
+/** Skill 调度全量聚合（P0-2a）：跨用户统计各技能触发/开启/完成次数，供管理后台看板 */
+export function skillsOverview() {
+  const rows = getDB().prepare('SELECT skill_log FROM profiles').all()
+  const by = {}
+  for (const r of rows) {
+    const log = jparse(r.skill_log, [])
+    for (const e of log) {
+      const s = by[e.skillId] || { skillId: e.skillId, name: e.skillName || e.skillId, total: 0, started: 0, completed: 0 }
+      s.total += 1
+      if (e.outcome === 'started') s.started += 1
+      if (e.outcome === 'completed') s.completed += 1
+      by[e.skillId] = s
+    }
+  }
+  return Object.values(by).sort((a, b) => b.total - a.total)
 }

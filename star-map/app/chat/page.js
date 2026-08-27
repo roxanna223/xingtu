@@ -53,7 +53,7 @@ export default function StarChatPage() {
       if (d.history && d.history.length) {
         sessionRef.current = d.sessionId
         setMessages(
-          d.history.map((m) => ({ role: m.role, content: m.content, quiz: m.quiz || null, result: m.result || null }))
+          d.history.map((m) => ({ role: m.role, content: m.content, quiz: m.quiz || null, result: m.result || null, skill: m.skill || null }))
         )
         const lastQuiz = [...d.history].reverse().find((m) => m.quiz)?.quiz || null
         setQuiz(lastQuiz)
@@ -81,11 +81,12 @@ export default function StarChatPage() {
       })
       const d = await r.json()
       if (d.sessionId) sessionRef.current = d.sessionId
-      if (d.reply) {
-        setMessages((m) => [...m, { role: 'assistant', content: d.reply, quiz: d.quiz || null, result: d.result || null }])
+      if (d.reply || d.skill) {
+        setMessages((m) => [...m, { role: 'assistant', content: d.reply || '', quiz: d.quiz || null, result: d.result || null, skill: d.skill || null }])
       }
       setQuiz(d.quiz || null)
       if (d.result) showToast('已存入测试报告 📋')
+      if (d.skill) showToast('已生成目标拆解 🎯')
     } catch {
       showToast('小星走神了，再试一次')
     }
@@ -188,6 +189,22 @@ export default function StarChatPage() {
                   <div className="result-headline">“{m.result.headline}”</div>
                   <p className="result-content">{m.result.content}</p>
                   <div className="muted" style={{ fontSize: 12 }}>已存入测试报告 📋</div>
+                </div>
+              )}
+
+              {m.skill?.id === 'goalBreak' && (
+                <div className="goal-card">
+                  <div className="quiz-title">🎯 {m.skill.title}</div>
+                  <p className="goal-summary">{m.skill.summary}</p>
+                  {(m.skill.steps || []).map((s, i) => (
+                    <div key={i} className="goal-step">
+                      <span className="goal-idx">{i + 1}</span>
+                      <div>
+                        <div className="goal-text">{s.step}</div>
+                        <div className="muted" style={{ fontSize: 12 }}>指标：{s.metric}</div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>

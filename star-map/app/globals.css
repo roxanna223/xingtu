@@ -588,6 +588,24 @@ select option { background: var(--panel); color: var(--txt); }
 .result-headline { color: var(--txt); font-size: 13.5px; margin-bottom: 10px; }
 .result-content { margin: 0; font-size: 12.5px; line-height: 1.9; color: var(--dim); }
 
+/* ---------- Skill：目标拆解卡 ---------- */
+.goal-card {
+  background: var(--panel-3);
+  border: 3px solid var(--green);
+  border-radius: 0;
+  padding: 16px;
+  margin: 4px 0 8px;
+  box-shadow: inset -3px -3px 0 rgba(0, 0, 0, 0.25);
+}
+.goal-summary { margin: 0 0 12px; font-size: 13px; line-height: 1.7; color: var(--dim); }
+.goal-step { display: flex; gap: 10px; margin-bottom: 10px; }
+.goal-idx {
+  flex: 0 0 22px; height: 22px; display: flex; align-items: center; justify-content: center;
+  background: rgba(107, 220, 143, 0.15); border: 2px solid var(--green); color: var(--green);
+  font-size: 12px; font-weight: 800;
+}
+.goal-text { font-size: 13.5px; line-height: 1.7; }
+
 /* ---------- 心情轨迹 ---------- */
 .track-list { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
 .track-item {

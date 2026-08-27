@@ -163,6 +163,21 @@ function migrate(d) {
       throw e
     }
   }
+  if (v < 5) {
+    // v5:Skill 调度日志(P0-2a Skill 注册表+调度器):每次技能调度留痕,供后台统计触发率/完成率
+    d.exec('BEGIN')
+    try {
+      const cols = d.prepare('PRAGMA table_info(profiles)').all()
+      if (!cols.some((c) => c.name === 'skill_log')) {
+        d.exec("ALTER TABLE profiles ADD COLUMN skill_log TEXT NOT NULL DEFAULT '[]'")
+      }
+      d.exec('PRAGMA user_version = 5')
+      d.exec('COMMIT')
+    } catch (e) {
+      d.exec('ROLLBACK')
+      throw e
+    }
+  }
 }
 
 export function closeDB() {

@@ -1,6 +1,7 @@
 // 暗层画像引擎的 Prompt 规格（对应 docs/02_mvp_spec_v0.1.md 第 6 节）
 
 import { quizSummaryForPrompt } from './quizzes.js'
+import { skillCatalogForPrompt } from './skills.js'
 
 export const EMOTIONS = ['焦虑', '疲惫', '迷茫', '愤怒', '平静', '期待', '低落', '充实']
 
@@ -210,9 +211,20 @@ ${JSON.stringify(profileSummary)}
 - quiz 进行中：用户的消息是他对当前题的作答（"我选：X"），记录答案，若 index < total 则出下一题（index+1），若 index === total 则输出 result：从题库 results 中选最贴合其作答的一个，content 在其基础上结合用户画像做一两句个性化收尾，并附 headline 与 emoji；
 - energy 无题目：直接输出 result，title 用"今日能量提示"，content 基于画像（最近情绪、生活域、lifeTask）给 2-3 句温柔的倾向性提示（用"可能/也许"措辞）；
 - 测验中途用户若表示不想做了（"算了/不测了"），尊重他，quiz 置 null 并自然转回闲聊；
-- 只输出 JSON：{"reply":"给用户的话","quiz":null,"result":null}
+
+技能（Skill）调度（确定性路由未命中的情况由你兜底判断）：
+- 技能目录：
+${skillCatalogForPrompt()}
+- 测验(quiz)与能量提示(energy)沿用上面的 quiz/result 字段输出；
+- 用户表达「定目标/想改变/拆解/行动计划」类诉求 → 调用 goalBreak：输出 skill 字段
+  {"skill":{"id":"goalBreak","title":"目标拆解","summary":"一句话概括目标","steps":[{"step":"步骤","metric":"量化指标"}]}}
+  步骤 3~5 步、由易到难、第一步必须是今天就能做的最小行动；只针对用户自己、可控、不伤关系、长期有用；不给医疗/投资建议、不预测结果；
+- 其余为普通闲聊，skill 为 null。
+
+- 只输出 JSON：{"reply":"给用户的话","quiz":null,"result":null,"skill":null}
   quiz 为 null 或 {"id":"flower","title":"测一测你是什么花","emoji":"🌸","index":1,"total":3,"question":"...","options":["...","..."]}；
-  result 为 null 或 {"quizId":"flower","title":"桃花","emoji":"🌸","headline":"...","content":"..."}。`
+  result 为 null 或 {"quizId":"flower","title":"桃花","emoji":"🌸","headline":"...","content":"..."}；
+  skill 为 null 或 {"id":"goalBreak","title":"目标拆解","summary":"...","steps":[{"step":"...","metric":"..."}]}。`
 
   const transcript = (history || [])
     .map((m) => `${m.role === 'user' ? '用户' : '小星'}：${m.content}`)
@@ -242,6 +254,29 @@ export function suggestionsMessages(profileSummary = {}) {
   return [
     { role: 'system', content: sys },
     { role: 'user', content: `用户画像：${JSON.stringify(profileSummary)}` },
+  ]
+}
+
+/* ---------------- Skill：目标拆解（goalBreak，P0-2a） ---------------- */
+
+export function goalBreakMessages(text, summary = {}) {
+  const sys = `你是「星图」产品的目标拆解助手。用户说了一个想改变/想达成的目标，你的任务是把目标拆成 3~5 步可执行的小步骤，每步配一个可量化的指标。
+
+用户画像（供你理解他，不要逐条复述）：
+${JSON.stringify(summary)}
+
+规则：
+1. 步骤只针对用户自己，只提用户可控的行动，不涉及改变、说服他人；
+2. 不给医疗、投资、法律建议；不预测结果；禁用命理玄学词汇；
+3. 步骤 3~5 步，由易到难，第一步必须是"今天/明天就能做的最小行动"；
+4. 每个 metric 是可自证的小指标（如"完成 1 次""连续 3 天""写 1 条"），不用模糊词；
+5. summary 用一句话把目标说清楚；title 固定为"目标拆解"；
+6. 只输出 JSON：
+{"reply":"承接用户的一句话(≤40字)","skill":{"id":"goalBreak","title":"目标拆解","summary":"一句话概括目标","steps":[{"step":"步骤","metric":"量化指标"}]}}`
+
+  return [
+    { role: 'system', content: sys },
+    { role: 'user', content: `用户的目标诉求：${String(text || '').slice(0, 200)}` },
   ]
 }
 

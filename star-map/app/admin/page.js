@@ -133,6 +133,17 @@ export default function AdminPage() {
               ))}
               {(!daily?.events || daily.events.length === 0) && <p className="muted">暂无事件</p>}
             </div>
+
+            <div className="sec-title" style={{ marginTop: 20 }}>Skill 调度统计（全量）</div>
+            <div className="kv-list">
+              {(stats?.skills || []).map((s) => (
+                <div key={s.skillId} className="kv">
+                  <span>🎯 {s.name}</span>
+                  <b>触发 {s.total} · 完成 {s.completed}</b>
+                </div>
+              ))}
+              {(!stats?.skills || stats.skills.length === 0) && <p className="muted">暂无 Skill 调度记录</p>}
+            </div>
           </div>
         )}
 

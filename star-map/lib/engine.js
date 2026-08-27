@@ -1,13 +1,14 @@
 // 画像引擎闭环：抽取 → 归并 → 报告 → 反馈回写
 // 双模：有 DEEPSEEK_API_KEY 走 LLM，无 Key 自动降级规则 Mock（保证演示不依赖网络）
 
-import { extractMessages, reportMessages, periodReportMessages } from './prompts.js'
+import { extractMessages, reportMessages, periodReportMessages, goalBreakMessages } from './prompts.js'
 import { personaSignal } from './cohort.js'
 import { emotionCountsFromTrack, mixEmotionColors, mockMoodNote } from './colors.js'
 import { moodFromCounts } from './mood.js'
 import { aiMoodCard } from './moodImage.js'
 import { QUIZZES, pickResult } from './quizzes.js'
 import { behaviorSummary } from './behavior.js'
+import { routeSkill } from './skills.js'
 
 function llmConfig() {
   return {
@@ -475,6 +476,12 @@ export function mockStar(history = [], quiz = null, summary = {}) {
   const lastUser = userTurns.at(-1)?.content || ''
   const joined = userTurns.map((u) => u.content).join('\n')
 
+  // Skill 调度（P0-2a）：确定性路由优先——goalBreak 命中即执行，不进入闲聊/测验流程
+  if (!quiz) {
+    const hit = routeSkill(lastUser)
+    if (hit?.skill?.id === 'goalBreak') return mockGoalBreak(lastUser, summary)
+  }
+
   // 测验意图识别
   const intent =
     /花|花朵/.test(lastUser) ? 'flower'
@@ -529,6 +536,52 @@ export function mockStar(history = [], quiz = null, summary = {}) {
     quiz: null,
     result: null,
   }
+}
+
+/* ---------------- Skill：目标拆解（goalBreak，P0-2a 新增） ---------------- */
+
+// 从诉求里提取目标主体（Mock 用，粗略但可解释）
+function goalTarget(text) {
+  return String(text || '')
+    .replace(/^(我)?(想|要|打算|准备)/, '')
+    .replace(/定个目标|立个目标|目标|拆解|帮我|怎么开始|行动计划|改变|改掉|养成|[:：,，。\s]+/g, '')
+    .slice(0, 24) || '这个目标'
+}
+
+/** 目标拆解 Mock（无 Key 兜底）：三步通用框架，不编造具体领域建议 */
+export function mockGoalBreak(text = '', summary = {}) {
+  const target = goalTarget(text)
+  return {
+    reply: `好，我们先把「${target}」拆成三步，每步带一个小指标，你按自己的节奏来。`,
+    quiz: null,
+    result: null,
+    skill: {
+      id: 'goalBreak',
+      title: '目标拆解',
+      summary: `把「${target}」变成可以走的三步`,
+      steps: [
+        { step: `把「${target}」写成一句话，并写下现在的状态与想要的差距`, metric: '写 1 条目标陈述 + 1 条现状记录' },
+        { step: '今天完成一个 10 分钟的最小行动（只要动起来就算数）', metric: '完成 1 次并当天记录' },
+        { step: '一周后回看：对比行动前后你在星图里的记录', metric: '每周复盘 1 次，连续 2 周' },
+      ],
+    },
+  }
+}
+
+/** 目标拆解（LLM + Mock 兜底），调用方通过 routeSkill 确定性路由进入 */
+export async function generateGoalBreak(text, summary = {}) {
+  const cfg = llmConfig()
+  if (cfg.mock) return mockGoalBreak(text, summary)
+  try {
+    const raw = await callLLM(goalBreakMessages(text, summary))
+    const parsed = parseJson(raw)
+    if (parsed?.skill?.id === 'goalBreak' && Array.isArray(parsed.skill.steps) && parsed.skill.steps.length) {
+      return { reply: parsed.reply || '我们把目标拆成几步：', quiz: null, result: null, skill: parsed.skill }
+    }
+  } catch (e) {
+    console.warn('[engine] 目标拆解失败，降级 Mock：', e.message)
+  }
+  return mockGoalBreak(text, summary)
 }
 
 /* ---------------- 周期报告（周/月/季/年） ---------------- */
