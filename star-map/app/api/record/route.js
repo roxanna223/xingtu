@@ -1,9 +1,11 @@
-import { readProfile, writeProfile, readDays, writeDays, readChats, withStoreLock } from '@/lib/store'
+import { readProfile, writeProfile, readDays, writeDays, readChats, readStream, withStoreLock } from '@/lib/store'
 import { extractAndMerge, generateReport } from '@/lib/engine'
 import { syncGoalsWithText } from '@/lib/goals'
 import { updateBehavior } from '@/lib/behavior'
 import { detectIntent, patternTopics } from '@/lib/intent'
 import { markSessionCovered, consumePendingChats } from '@/lib/chatStore'
+import { rebuildPersonaDocs } from '@/lib/evolution'
+import { formatStream } from '@/lib/stream'
 import { requireAuth, assertSameOrigin, readJsonBody } from '@/lib/auth'
 import { trackReq } from '@/lib/track'
 
@@ -53,16 +55,21 @@ export async function POST(req) {
         const track = lastD?.q2 || ''
         const intent = detectIntent(`${lastD?.freeText || ''} ${lastD?.q1 || ''} ${lastD?.q3 || ''}`)
         const patterns = patternTopics(latest)
-        const rep = await generateReport(latest, null, track, lastD || null, intent, patterns)
+        const streamText = formatStream(readStream(userId, lastD?.date || record.date))
+        const rep = await generateReport(latest, null, track, lastD || null, intent, patterns, streamText)
         const fresh = readProfile(userId)
         fresh.lastReport = rep
         fresh.reports = fresh.reports || {}
-        if (lastD) fresh.reports[lastD.date] = { ...rep, trackText: track }
+        if (lastD) {
+          rep.dayKey = lastD.date
+          fresh.reports[lastD.date] = { ...rep, trackText: track }
+        }
         // 目标系统 v1：当日记录自动同步目标进度（LLM 判定 + 规则兜底）
         const dayText = `${lastD?.freeText || ''} ${lastD?.q1 || ''} ${lastD?.q3 || ''}`.trim()
         if (dayText && (fresh.goals || []).some((g) => g.status === 'active')) {
           await syncGoalsWithText(fresh, dayText, 'record')
         }
+        rebuildPersonaDocs(userId, fresh)
         fresh.generating = false
         writeProfile(userId, fresh)
       })

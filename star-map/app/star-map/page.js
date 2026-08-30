@@ -1,8 +1,9 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import NavBar from '@/components/NavBar'
+import StarMap3D from '@/components/StarMap3D'
 
 const DOMAINS = ['事业', '关系', '自我', '健康', '财务', '成长']
 const W = 1000
@@ -45,6 +46,9 @@ export default function StarMapPage() {
   const [data, setData] = useState(null)
   const [selected, setSelected] = useState(null)
   const [showLegend, setShowLegend] = useState(true)
+  const [view3d, setView3d] = useState(false)
+  const [dim3d, setDim3d] = useState({ width: 680, height: 460 })
+  const wrapRef = useRef(null)
   const [asOf, setAsOf] = useState('')
   const [splitQuoteQ, setSplitQuoteQ] = useState(null)
   const [splitName, setSplitName] = useState('')
@@ -68,6 +72,20 @@ export default function StarMapPage() {
     refresh()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [asOf])
+
+  useEffect(() => {
+    const update = () => {
+      const el = wrapRef.current
+      if (!el) return
+      const rect = el.getBoundingClientRect()
+      const width = Math.max(320, Math.min(720, Math.floor(rect.width)))
+      const height = Math.max(280, Math.floor(width * 0.62))
+      setDim3d({ width, height })
+    }
+    update()
+    window.addEventListener('resize', update)
+    return () => window.removeEventListener('resize', update)
+  }, [])
 
   async function doSplit(q) {
     const r = await fetch('/api/topics', {
@@ -177,8 +195,16 @@ export default function StarMapPage() {
         </div>
       )}
 
-      <div className="star-wrap">
-        <svg className="star-svg" viewBox={`0 0 ${W} ${H}`} shapeRendering="crispEdges">
+      <div className="star-wrap" ref={wrapRef}>
+        {view3d ? (
+          <StarMap3D
+            graphData={{ nodes: data.nodes || [], links: data.edges || [] }}
+            onNodeClick={setSelected}
+            width={dim3d.width}
+            height={dim3d.height}
+          />
+        ) : (
+          <svg className="star-svg" viewBox={`0 0 ${W} ${H}`} shapeRendering="crispEdges">
           <rect width={W} height={H} fill="#0e1130" />
 
           {/* 像素星尘 */}
@@ -281,9 +307,11 @@ export default function StarMapPage() {
             )
           })}
         </svg>
+        )}
 
         <div className="star-toolbar">
           <button className="btn btn-ghost" onClick={() => setShowLegend((v) => !v)}>图例</button>
+          <button className="btn btn-ghost" onClick={() => setView3d((v) => !v)}>{view3d ? '2D 像素视图' : '3D 引力视图'}</button>
           <Link className="btn btn-primary" href="/report">查看状态报告 →</Link>
         </div>
 

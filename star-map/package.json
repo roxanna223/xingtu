@@ -9,11 +9,13 @@
     "start": "next start",
     "import": "node scripts/import-diary.mjs",
     "reset": "node scripts/reset-data.mjs",
-    "eval": "node scripts/eval-extraction.mjs"
+    "eval": "node scripts/eval-extraction.mjs",
+    "eval:dialogue": "node scripts/eval-dialogue.mjs"
   },
   "dependencies": {
     "next": "^15.3.3",
     "react": "^19.1.0",
-    "react-dom": "^19.1.0"
+    "react-dom": "^19.1.0",
+    "react-force-graph-3d": "^1.29.1"
   }
 }

@@ -47,7 +47,15 @@ export default function ReportPage() {
   }
 
   useEffect(() => {
-    load('', '')
+    // 支持 /report?range=week 直达周期报告（主页「本周回顾」入口）
+    const q = new URLSearchParams(window.location.search)
+    const r = q.get('range')
+    if (r && RANGE_LABELS[r]) {
+      setRange(r)
+      load('', '', r)
+    } else {
+      load('', '')
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -73,7 +81,12 @@ export default function ReportPage() {
     })
     const data = await r.json()
     setSent(true)
-    showToast(`已记下（影响主题：${data.adjusted?.length ? data.adjusted.join('、') : '已记录'}）。明天你会看到星图的变化。`)
+    // P0-2 反馈闭环感知：明确告诉用户这条反馈会改变什么
+    showToast(
+      data.adjusted?.length
+        ? `已记住 ✓ 小星会调整对「${data.adjusted.join('、')}」的观察，明天的报告会不一样`
+        : '已记住 ✓ 小星会调整明天的观察方式，报告会不一样'
+    )
   }
 
   async function voteObs(i, ok) {
@@ -188,6 +201,14 @@ export default function ReportPage() {
         </div>
       )}
 
+      {range !== 'day' && report?.periodLabel && /^上|去/.test(report.periodLabel) && (
+        <div className="card" style={{ borderColor: 'rgba(245,199,106,0.4)', padding: '10px 16px' }}>
+          <span className="muted" style={{ fontSize: 12.5 }}>
+            💡 本周期还在进行中——先看最近的完整周期（{report.periodLabel}）。周期结束后会生成新的报告。
+          </span>
+        </div>
+      )}
+
       {phase === 'loading' && (
         <div className="card empty-state">
           <div className="spinner" />
@@ -293,10 +314,30 @@ export default function ReportPage() {
               )}
             </div>
 
-            {report.suggestion && (
+            {report.coordinates && (
               <div className="report-sec">
-                <h3>可以试试</h3>
-                <div className="path-card">{report.suggestion}</div>
+                <h3>我的坐标 · 目标 / 自我 / 差距</h3>
+                <div className="coord-grid">
+                  <div className="coord-item">
+                    <b>🎯 目标</b>
+                    <p>{report.coordinates.goal || '—'}</p>
+                  </div>
+                  <div className="coord-item">
+                    <b>🪞 自我</b>
+                    <p>{report.coordinates.self || '—'}</p>
+                  </div>
+                  <div className="coord-item">
+                    <b>📏 差距</b>
+                    <p>{report.coordinates.gap || '—'}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {(report.growthPlan || report.suggestion) && (
+              <div className="report-sec">
+                <h3>成长规划 · 本周一小步</h3>
+                <div className="path-card">{report.growthPlan || report.suggestion}</div>
                 {!adoption ? (
                   <div className="feedback-row" style={{ marginTop: 12 }}>
                     <button className="btn btn-ghost" disabled={adopting} onClick={() => sendAdoption(true)}>✅ 我做到了</button>
@@ -319,7 +360,10 @@ export default function ReportPage() {
             )}
 
             {range !== 'day' && report.adoptionNote && (
-              <p className="muted" style={{ fontSize: 13, margin: '4px 2px 0' }}>📌 {report.adoptionNote}</p>
+              <div className="report-sec">
+                <h3>上周建议 → 本周期变化</h3>
+                <div className="rcause">📌 {report.adoptionNote}</div>
+              </div>
             )}
 
             <div className="report-sec">
@@ -348,7 +392,7 @@ export default function ReportPage() {
                     )}
                   </>
                 ) : (
-                  <p className="muted">已收到你的反馈，明晚记录后星图会相应变化。</p>
+                  <p className="muted">已收到 ✓ 这条反馈已写进你的画像，明天的报告与观察会跟着调整。</p>
                 )}
               </div>
             )}

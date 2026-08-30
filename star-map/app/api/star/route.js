@@ -1,11 +1,14 @@
-import { readProfile, writeProfile, readChats, withStoreLock } from '@/lib/store'
-import { callLLM, parseJson, mockStar, mockSuggestions, buildProfileSummary, generateGoalBreak } from '@/lib/engine'
-import { starMessages, suggestionsMessages } from '@/lib/prompts'
+import { readProfile, writeProfile, readChats, appendStream, withStoreLock } from '@/lib/store'
+import { callLLM, parseJson, mockStar, mockStarGuide, mockSuggestions, buildProfileSummary, generateGoalBreak } from '@/lib/engine'
+import { starMessages, suggestionsMessages, starGuideMessages } from '@/lib/prompts'
+import { allQuizzes, saveCustomQuiz } from '@/lib/quizzes'
 import { routeSkill, recordSkillLog } from '@/lib/skills'
 import { createGoalFromSkill, syncGoalsWithText } from '@/lib/goals'
 import { updateBehavior } from '@/lib/behavior'
+import { buildPersonaSummary, observeSession } from '@/lib/evolution'
 import { requireAuth, assertSameOrigin, readJsonBody } from '@/lib/auth'
 import { trackReq } from '@/lib/track'
+import { dayKeyOfIso, nowIso } from '@/lib/day'
 import {
   saveSession,
   getSession,
@@ -36,12 +39,13 @@ export async function POST(req) {
   if (!assertSameOrigin(req)) return Response.json({ error: '跨站请求被拒绝' }, { status: 403 })
   const body = await readJsonBody(req)
   if (body.__error) return Response.json({ error: body.__error }, { status: 400 })
-  const { message = '', quiz = null, mode = 'chat', sessionId = null } = body
+  const { message = '', quiz = null, mode = 'chat', sessionId = null, guide = false, draft = null } = body
   const text = String(message || '').trim().slice(0, 2000)
   if (text) trackReq(req, 'chat_message', '/api/star')
 
   const p = readProfile(userId)
   const summary = buildProfileSummary(p)
+  const personaSummary = buildPersonaSummary(userId, p)
 
   // 快速开始提示生成（不落盘对话，但 Skill 调度留痕）
   if (mode === 'suggestions') {
@@ -60,6 +64,12 @@ export async function POST(req) {
       }
     }
     if (!suggestions) suggestions = mockSuggestions(summary).suggestions
+    // 兼容旧版字符串提示，统一转卡片对象（保留 quizHint 供前端测验卡提示）
+    suggestions = suggestions.map((s) =>
+      typeof s === 'string'
+        ? { title: s.slice(0, 8), text: s, tag: '引导', guide: /理一理|梳理|记录/.test(s), quizHint: '' }
+        : { title: String(s.title || s.text || '').slice(0, 8), text: String(s.text || s.title || ''), tag: s.tag || '轻松', guide: !!s.guide, quizHint: String(s.quizHint || '').slice(0, 12) }
+    )
     const fresh = readProfile(userId)
     recordSkillLog(fresh, { skillId: 'quickStart', source: 'rule', outcome: 'completed', detail: `生成 ${suggestions.length} 条` })
     writeProfile(userId, fresh)
@@ -86,6 +96,8 @@ export async function POST(req) {
     chats = saveSession(userId, chats, session)
     if (!isControlMessage(text)) updateBehavior(p, [text])
     writeProfile(userId, p)
+    // 人生事件流：用户本轮消息（6:00 划日归桶）
+    appendStream(userId, { day: dayKeyOfIso(nowIso()), kind: 'chat_turn', data: { role: 'user', text: text.slice(0, 500), guide: !!guide } })
   }
 
   if (!session) {
@@ -96,24 +108,46 @@ export async function POST(req) {
   const history = session.messages.map((m) => ({ role: m.role, content: m.content }))
   const isFirstTurn = history.filter((m) => m.role === 'user').length === 1
 
-  // Skill 调度（P0-2a）：确定性路由优先——测验进行中不重新路由
-  const route = quiz ? null : routeSkill(text)
+  // Skill 调度（P0-2a）：确定性路由优先——测验进行中不重新路由；引导模式内不做技能路由
+  const route = quiz || guide ? null : routeSkill(text)
   let out
-  if (route?.skill?.id === 'goalBreak') {
+  if (guide) {
+    // 记录引导模式（docs/23 §4.2）：心理侧写式引导，产出可编辑梳理卡
+    if (!process.env.DEEPSEEK_API_KEY) {
+      out = mockStarGuide(history, draft)
+    } else {
+      try {
+        const raw = await callLLM(starGuideMessages({ history, profileSummary: summary, personaSummary, draft }))
+        const parsed = parseJson(raw)
+        out = parsed?.reply
+          ? { reply: parsed.reply, draft: parsed?.draft || null, done: !!parsed?.done && !!parsed?.draft }
+          : mockStarGuide(history, draft)
+      } catch (e) {
+        console.warn('[star] 引导失败，降级 Mock：', e.message)
+        out = mockStarGuide(history, draft)
+      }
+    }
+  } else if (route?.skill?.id === 'goalBreak') {
     // 命中目标拆解：确定性路由直接执行（LLM 生成 + Mock 兜底）
     out = await generateGoalBreak(text, summary)
   } else if (!process.env.DEEPSEEK_API_KEY) {
     out = mockStar(history, quiz, summary)
   } else {
     try {
-      const raw = await callLLM(starMessages({ history, quiz, profileSummary: summary, isFirstTurn }))
+      const raw = await callLLM(starMessages({ history, quiz, profileSummary: summary, isFirstTurn, personaSummary }))
       const parsed = parseJson(raw)
-      out = {
-        reply: parsed?.reply || '嗯，我在。',
-        quiz: parsed?.quiz || null,
-        result: parsed?.result || null,
-        skill: parsed?.skill || null,
+      // 题库外主题的现场创作测验：沉淀进 custom-quizzes.json，下次直接复用
+      const freshQuiz = parsed?.freshQuiz
+      if (freshQuiz?.id && Array.isArray(freshQuiz.questions) && freshQuiz.questions.length && Array.isArray(freshQuiz.results) && freshQuiz.results.length) {
+        if (!allQuizzes()[freshQuiz.id]) {
+          saveCustomQuiz(freshQuiz.id, freshQuiz)
+          console.log(`[star] 新测验「${freshQuiz.title}」已沉淀进题库（${freshQuiz.id}）`)
+        }
       }
+      // LLM 空回复/结构异常时降级规则承接句，绝不回"嗯，我在。"这类敷衍兜底
+      out = parsed?.reply
+        ? { reply: parsed.reply, quiz: parsed?.quiz || null, result: parsed?.result || null, skill: parsed?.skill || null }
+        : mockStar(history, quiz, summary)
     } catch (e) {
       console.warn('[star] 对话失败，降级 Mock：', e.message)
       out = mockStar(history, quiz, summary)
@@ -144,9 +178,12 @@ export async function POST(req) {
     quiz: out.quiz || undefined,
     result: out.result || undefined,
     skill: out.skill || undefined,
+    draft: out.draft || undefined,
   })
   // LLM await 之后重读 chats(清单 A4):避免覆盖并发请求刚写入的会话
   chats = saveSession(userId, readChats(userId), session)
+  // 人生事件流：小星本轮回复
+  appendStream(userId, { day: dayKeyOfIso(nowIso()), kind: 'chat_turn', data: { role: 'assistant', text: (out.reply || '').slice(0, 500), guide: !!guide } })
 
   // 测验结果自动存入测试报告 + Skill 调度留痕 + goalBreak 自动创建目标（同样重读 profile 再写）
   let goalCreated = null
@@ -178,5 +215,10 @@ export async function POST(req) {
     syncGoalsInBackground(userId, text)
   }
 
-  return Response.json({ ...out, sessionId: session.id, goal: goalCreated })
+  // 进化层：后台观察（不阻塞回复；Mock 模式内部直接跳过）
+  if (text && !isControlMessage(text)) {
+    observeSession(userId, history.slice(-8).map((m) => m.content).join('\n'), summary).catch(() => {})
+  }
+
+  return Response.json({ ...out, sessionId: session.id, goal: goalCreated, guide: !!guide })
 }

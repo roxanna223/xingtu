@@ -1,5 +1,6 @@
 import { readProfile, writeProfile, readDays, withStoreLock } from '@/lib/store'
 import { applyAdoption } from '@/lib/engine'
+import { applyUserSignal } from '@/lib/evolution'
 import { requireAuth, assertSameOrigin, readJsonBody } from '@/lib/auth'
 import { trackReq } from '@/lib/track'
 
@@ -42,6 +43,10 @@ export async function POST(req) {
         reportDay: range === 'day' ? date || lastDay : null,
         suggestionTopicName: report.suggestionTopic,
       })
+      // 进化层：建议被采纳 → 相关条目确认（+0.05）
+      if (adopted) {
+        p.personaMeta = applyUserSignal(p.personaMeta, { signal: 'confirm', keywords: [report.suggestionTopic || ''] })
+      }
       writeProfile(userId, p)
       return { error: null, saved }
     })

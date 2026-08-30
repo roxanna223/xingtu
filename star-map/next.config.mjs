@@ -19,6 +19,17 @@ const nextConfig = {
   async headers() {
     return [{ source: '/:path*', headers: securityHeaders }]
   },
+  webpack(config, { isServer }) {
+    // 让 server / instrumentation bundle 把 node: 内置模块当 external，
+    // 避免 webpack 因不认识 node: 协议而报错（node:sqlite / node:fs 等）。
+    if (isServer) {
+      config.externals = config.externals || []
+      if (Array.isArray(config.externals)) {
+        config.externals.push(/^node:/)
+      }
+    }
+    return config
+  },
 }
 
 export default nextConfig

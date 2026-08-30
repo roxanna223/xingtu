@@ -284,6 +284,105 @@ select option { background: var(--panel); color: var(--txt); }
   text-decoration: none;
 }
 .pill.warn { color: var(--yellow); border-color: var(--yellow); }
+.pill.ok { color: var(--green, #8fd3a7); border-color: var(--green, #8fd3a7); }
+
+/* ---------- 日记编辑区 ---------- */
+.diary-editor {
+  width: 100%;
+  min-height: 300px;
+  background: transparent;
+  border: none;
+  color: var(--txt);
+  font-size: 16px;
+  line-height: 2;
+  resize: vertical;
+  font-family: inherit;
+}
+.diary-editor:focus { outline: none; }
+.diary-editor::placeholder { color: var(--dim); opacity: 0.6; }
+
+/* ---------- 日记月历 ---------- */
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+.cal-cell {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.25);
+  border: 2px solid var(--line-dim);
+  color: var(--txt);
+  font-size: 13px;
+  cursor: pointer;
+  font-family: inherit;
+  padding: 0;
+}
+.cal-cell:hover { border-color: var(--yellow); }
+.cal-cell.on { background: var(--yellow); color: #12152e; border-color: var(--yellow); }
+.cal-cell.today { box-shadow: inset 0 0 0 2px var(--green); }
+.cal-cell.cal-head {
+  aspect-ratio: auto;
+  background: transparent;
+  border-color: transparent;
+  color: var(--dim);
+  font-size: 10px;
+  padding: 4px 0;
+  cursor: default;
+}
+.cal-cell.cal-empty { background: transparent; border-color: transparent; cursor: default; }
+.cal-num { position: relative; z-index: 1; }
+.cal-dots {
+  position: absolute;
+  bottom: 4px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  gap: 2px;
+  z-index: 1;
+}
+.cal-dots i {
+  display: block;
+  width: 5px;
+  height: 5px;
+  border-radius: 0;
+}
+
+/* ---------- 报告三坐标（目标/自我/差距） ---------- */
+.coord-grid { display: flex; flex-direction: column; gap: 10px; }
+.coord-item {
+  background: rgba(0, 0, 0, 0.25);
+  border-left: 3px solid var(--yellow);
+  padding: 10px 14px;
+}
+.coord-item b { display: block; font-size: 13px; letter-spacing: 1px; margin-bottom: 6px; }
+.coord-item p { margin: 0; font-size: 14px; line-height: 1.8; color: var(--fg); }
+.coord-item:nth-child(2) { border-left-color: #7b8cff; }
+.coord-item:nth-child(3) { border-left-color: #ff9a5c; }
+
+/* ---------- 设置页 · 进化层个人资产 ---------- */
+.persona-item {
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--line-dim);
+  padding: 10px 14px;
+  margin-bottom: 10px;
+}
+.conf-bar {
+  flex: 1;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  margin: 0 10px;
+  display: inline-block;
+}
+.conf-bar i {
+  display: block;
+  height: 100%;
+  background: var(--yellow);
+}
 
 /* ---------- 登录页 ---------- */
 .login-wrap { position: relative; min-height: 100vh; overflow: hidden; }
@@ -476,11 +575,18 @@ select option { background: var(--panel); color: var(--txt); }
 .home-quick .q i { display: block; font-style: normal; font-size: 19px; margin-bottom: 7px; }
 
 /* ---------- 对话（记录页 & 小星页） ---------- */
-.chat-panel { display: flex; flex-direction: column; min-height: 420px; }
+/* 固定高度面板：消息区内部滚动，卡片/选项出现时整体布局不跳动 */
+.chat-panel {
+  display: flex;
+  flex-direction: column;
+  height: min(70dvh, 600px);
+  min-height: 380px;
+  padding: 12px 14px 14px;
+}
 .chat-scroll {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
-  max-height: 400px;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -515,6 +621,50 @@ select option { background: var(--panel); color: var(--txt); }
 .chat-input-row { display: flex; gap: 8px; margin-top: 12px; align-items: center; }
 .chat-input-row input { flex: 1; }
 
+/* 梳理卡提示条（轻量，只给"存进日记"一个动作） */
+.draft-chip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  background: rgba(245, 199, 106, 0.08);
+  border: 2px solid var(--yellow);
+  border-radius: 0;
+  padding: 9px 12px;
+  font-size: 12.5px;
+  margin-top: 2px;
+}
+
+/* 对话框上方功能点快捷入口（QQ 群快捷功能风格） */
+.chat-toolbar {
+  display: flex;
+  gap: 6px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 2px dashed var(--line-dim);
+  flex-wrap: wrap;
+}
+.chat-toolbar .ct-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 7px 12px;
+  font-size: 11.5px;
+  letter-spacing: 1px;
+  color: var(--txt);
+  background: rgba(0, 0, 0, 0.28);
+  border: 2px solid var(--line-dim);
+  border-radius: 0;
+  cursor: pointer;
+  text-decoration: none;
+  font-family: inherit;
+  font-weight: 700;
+}
+.chat-toolbar .ct-btn i { font-style: normal; font-size: 13px; }
+.chat-toolbar .ct-btn:hover { border-color: var(--yellow); color: var(--yellow); }
+.chat-toolbar .ct-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
 .star-intro { display: flex; gap: 14px; align-items: center; padding: 10px 4px; }
 .star-avatar {
   width: 52px; height: 52px;
@@ -528,8 +678,8 @@ select option { background: var(--panel); color: var(--txt); }
 }
 .star-intro p { margin: 0; color: var(--dim); font-size: 13px; line-height: 1.8; }
 
-.suggest-block { margin-top: 12px; border-top: 2px dashed var(--line-dim); padding-top: 14px; }
-.suggest-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.suggest-block { margin-top: 8px; border-top: 2px dashed var(--line-dim); padding-top: 10px; }
+.suggest-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
 .suggest-grid { display: grid; gap: 9px; }
 .suggest-card {
   text-align: left;
@@ -545,6 +695,28 @@ select option { background: var(--panel); color: var(--txt); }
   box-shadow: inset -3px -3px 0 rgba(0, 0, 0, 0.25);
 }
 .suggest-card:hover { background: var(--panel-2); border-color: var(--yellow); }
+.suggest-card .suggest-tag {
+  display: inline-block;
+  font-size: 9px;
+  color: var(--yellow);
+  border: 1.5px solid var(--yellow);
+  padding: 2px 6px;
+  margin-bottom: 6px;
+  letter-spacing: 1px;
+}
+.suggest-card .suggest-title {
+  display: block;
+  font-size: 14px;
+  font-weight: 800;
+  margin-bottom: 4px;
+  letter-spacing: 1px;
+}
+.suggest-card .suggest-text {
+  display: block;
+  font-size: 11.5px;
+  color: var(--dim);
+  line-height: 1.6;
+}
 
 /* 测验卡 */
 .quiz-card {

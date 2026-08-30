@@ -1,9 +1,11 @@
-import { readProfile, writeProfile, readDays, withStoreLock } from '@/lib/store'
+import { readProfile, writeProfile, readDays, readStream, listStreamDays, withStoreLock } from '@/lib/store'
 import { generateReport, generatePeriodReport, PERIOD_CACHE_VERSION, adoptionContext } from '@/lib/engine'
 import { emotionCountsFromTrack, mixEmotionColors, parseTrackText } from '@/lib/colors'
 import { detectIntent, patternTopics } from '@/lib/intent'
 import { aggregateRange, currentOrLastComplete, RANGES } from '@/lib/period'
 import { consumePendingChats } from '@/lib/chatStore'
+import { formatStream } from '@/lib/stream'
+import { todayKey } from '@/lib/day'
 import { requireAuth } from '@/lib/auth'
 import { trackReq } from '@/lib/track'
 
@@ -28,8 +30,11 @@ export async function GET(req) {
       }
       const days = readDays(userId)
       const dates = days.map((d) => d.date)
-      const lastDay = dates.at(-1) || ''
-      const todayStr = new Date().toISOString().slice(0, 10)
+      // 6:00 划日（docs/23 §3.2）：日报的自然日 = 当天 06:00 ~ 次日 05:59
+      const todayStr = todayKey()
+      // 最新日报 = 最近一个有内容的日子（日记或对话）；6:00 后自然落到"刚关闭的昨天"
+      const contentDates = [...new Set([...days.map((d) => d.date), ...listStreamDays(userId)])].sort()
+      const latestContentDay = contentDates.at(-1) || todayStr
 
       /* ---------- 周期报告：按自然周期划分，周期满了才生成；缓存 key 含周期起点 ---------- */
       if (range && RANGES[range]) {
@@ -66,7 +71,7 @@ export async function GET(req) {
         return Response.json({ generating: true, dates, track: [] })
       }
 
-      /* ---------- 历史日报告：首看生成后缓存，refresh 才重新生成 ---------- */
+      /* ---------- 历史日报告：首看生成后缓存，refresh 才重新生成；含当日对话事件流 ---------- */
       if (date) {
         const adoption = (p.adoptions || []).find((a) => a.reportKey === `day:${date}`) || null
         if (!refresh && p.reports?.[date] && p.reports[date].generatedAt) {
@@ -84,9 +89,10 @@ export async function GET(req) {
         }
         const dayRecord = days.find((d) => d.date === date)
         const todayTrack = dayRecord?.q2 || ''
-        const intent = detectIntent(`${dayRecord?.freeText || ''} ${dayRecord?.q1 || ''} ${dayRecord?.q3 || ''}`)
+        const streamText = formatStream(readStream(userId, date))
+        const intent = detectIntent(`${dayRecord?.freeText || ''} ${dayRecord?.q1 || ''} ${dayRecord?.q3 || ''} ${streamText}`)
         const patterns = patternTopics(profileForReport)
-        const report = await generateReport(profileForReport, tier === 'logical' || tier === 'result' ? tier : null, todayTrack, dayRecord || null, intent, patterns)
+        const report = await generateReport(profileForReport, tier === 'logical' || tier === 'result' ? tier : null, todayTrack, dayRecord || null, intent, patterns, streamText)
         report.moodColor = report.moodColor || mixEmotionColors(emotionCountsFromTrack(todayTrack))
         report.trackText = todayTrack
         p.reports = p.reports || {}
@@ -95,20 +101,25 @@ export async function GET(req) {
         return Response.json({ ...report, dates, track: parseTrackText(todayTrack), adoption })
       }
 
-      /* ---------- 最新报告：当日缓存（有新记录后自动重新生成） ---------- */
-      if (!tier && p.lastReport?.generatedAt && lastDay && p.lastReport.generatedAt >= lastDay) {
-        const adoption = (p.adoptions || []).find((a) => a.reportKey === `day:${lastDay}`) || null
+      /* ---------- 最新报告（最近有内容的日子；6:00 划日缓存，跨日自动重生成） ---------- */
+      if (!tier && p.lastReport?.dayKey === latestContentDay && p.lastReport.generatedAt) {
+        const adoption = (p.adoptions || []).find((a) => a.reportKey === `day:${latestContentDay}`) || null
         return Response.json({ ...p.lastReport, dates, track: parseTrackText(p.lastReport.trackText || ''), adoption })
       }
-      const dayRecord = days.at(-1)
+      const dayRecord = days.find((d) => d.date === latestContentDay)
       const todayTrack = dayRecord?.q2 || ''
-      const intent = detectIntent(`${dayRecord?.freeText || ''} ${dayRecord?.q1 || ''} ${dayRecord?.q3 || ''}`)
+      const streamText = formatStream(readStream(userId, latestContentDay))
+      const intent = detectIntent(`${dayRecord?.freeText || ''} ${dayRecord?.q1 || ''} ${dayRecord?.q3 || ''} ${streamText}`)
       const patterns = patternTopics(p)
-      const report = await generateReport(p, tier === 'logical' || tier === 'result' ? tier : null, todayTrack, dayRecord || null, intent, patterns)
+      const report = await generateReport(p, tier === 'logical' || tier === 'result' ? tier : null, todayTrack, dayRecord || null, intent, patterns, streamText)
       report.moodColor = report.moodColor || mixEmotionColors(emotionCountsFromTrack(todayTrack))
       report.trackText = todayTrack
+      report.dayKey = latestContentDay
+      p.lastReport = report
+      p.reports = p.reports || {}
+      p.reports[latestContentDay] = { ...report, trackText: todayTrack }
       writeProfile(userId, p)
-      const adoption = (p.adoptions || []).find((a) => a.reportKey === `day:${lastDay}`) || null
+      const adoption = (p.adoptions || []).find((a) => a.reportKey === `day:${latestContentDay}`) || null
       return Response.json({ ...report, dates, track: parseTrackText(todayTrack), adoption })
     })
     trackReq(req, 'report_view', '/api/report', { range: new URL(req.url).searchParams.get('range'), date: new URL(req.url).searchParams.get('date') })

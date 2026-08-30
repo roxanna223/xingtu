@@ -1,0 +1,2 @@
+{"id":"cpsycoun-01","scenario":"工作压力","conversation":[{"role":"user","content":"最近项目 deadline 很紧，我每天都睡不好。"},{"role":"assistant","content":"听起来你最近压力很大，能具体说说吗？"},{"role":"user","content":"我担心完不成会被领导批评。"},{"role":"assistant","content":"这种担心让你很难受。如果用一个词形容现在的情绪，会是什么？"}]}
+{"id":"sharegpt-02","scenario":"","conversation":[{"role":"user","content":"我最近总是提不起劲，什么都不想做。"},{"role":"assistant","content":"这种状态持续多久了？有没有发生什么特别的事？"},{"role":"user","content":"大概两周，可能是因为和男朋友吵架。"},{"role":"assistant","content":"和男朋友的冲突让你这两周都很低落。你现在最需要的是什么？"}]}

@@ -4,8 +4,10 @@
 // - 防重复计数：被记录保存覆盖的会话（covered）标记为已抽取；consume 有进程内互斥
 import { readChats, writeChats, readProfile, writeProfile } from './store'
 import { extractAndMerge } from './engine'
+import { fakeNow, fakeTodayISO } from './clock.js'
 
-const today = () => new Date().toISOString().slice(0, 10)
+const today = () => fakeTodayISO()
+const ts = () => fakeNow().toISOString()
 const MAX_SESSIONS = 40 // 只保留最近 40 个会话，含未抽取消息的会话永不裁剪
 
 // 控制消息：不参与画像抽取与行为统计
@@ -21,8 +23,8 @@ export function newSession(source) {
     day: today(),
     messages: [],
     covered: false, // 该会话已被"保存记录"覆盖（内容已通过 /api/record 抽取），不再重复抽取
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
+    createdAt: ts(),
+    updatedAt: ts(),
   }
 }
 
@@ -40,8 +42,8 @@ export function findRestorable(chats, source) {
 }
 
 export function appendMessage(session, msg) {
-  session.messages.push({ ts: new Date().toISOString(), extracted: false, ...msg })
-  session.updatedAt = new Date().toISOString()
+  session.messages.push({ ts: ts(), extracted: false, ...msg })
+  session.updatedAt = ts()
   return session
 }
 
@@ -73,10 +75,10 @@ export function markSessionCovered(userId, chats, sessionId) {
   const s = chats.find((c) => c.id === sessionId)
   if (!s) return false
   s.covered = true
-  s.updatedAt = new Date().toISOString()
+  s.updatedAt = ts()
   for (const m of s.messages || []) {
     m.extracted = true
-    m.extractedAt = m.extractedAt || new Date().toISOString()
+    m.extractedAt = m.extractedAt || ts()
   }
   writeChats(userId, chats)
   return true
@@ -110,7 +112,7 @@ export async function consumeChatsIntoProfile(chats, profile) {
       await extractAndMerge(record, profile)
       for (const g of group) {
         g.msg.extracted = true
-        g.msg.extractedAt = new Date().toISOString()
+        g.msg.extractedAt = ts()
       }
       extractedDates.push(date)
       extractedCount += group.length

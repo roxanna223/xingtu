@@ -2,7 +2,6 @@ node_modules/
 .next/
 .npm-cache/
 .env
-data/*.json
 data/.session-secret
 data/star.db
 data/star.db-wal

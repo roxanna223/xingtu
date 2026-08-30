@@ -1,5 +1,16 @@
 // 小星对话式测验题库（可扩展：往 QUIZZES 里加新类型即可）
 // 题目为通用趣味心理映射题；LLM 主持测验时严格从题库取题，结果做个性化解读
+//
+// 题库沉淀机制（2026-08-29）：用户想测的主题不在题库时——
+//   LLM 模式：模型现场创作完整测验（freshQuiz），服务端落盘 data/custom-quizzes.json；
+//   Mock 模式：makeGenericQuiz 规则模板生成并落盘。
+// 沉淀后下次直接在题库命中，不再现编。
+
+import fs from 'node:fs'
+import path from 'node:path'
+
+const CUSTOM_PATH = path.join(process.cwd(), 'data', 'custom-quizzes.json')
+let customCache = null
 
 export const QUIZZES = {
   flower: {
@@ -65,17 +76,85 @@ export const QUIZZES = {
   },
 }
 
-// 供 prompt 内嵌的紧凑题库
+/** 读取自定义题库（沉淀的测验；文件不存在返回 {}） */
+export function loadCustomQuizzes() {
+  if (customCache) return customCache
+  try {
+    customCache = JSON.parse(fs.readFileSync(CUSTOM_PATH, 'utf8'))
+  } catch {
+    customCache = {}
+  }
+  return customCache
+}
+
+/** 沉淀一个新测验到自定义题库文件（幂等：id 已存在则跳过） */
+export function saveCustomQuiz(quizId, quiz) {
+  const all = loadCustomQuizzes()
+  if (all[quizId]) return false
+  if (!quiz || !Array.isArray(quiz.questions) || !quiz.questions.length || !Array.isArray(quiz.results) || !quiz.results.length) return false
+  all[quizId] = {
+    title: String(quiz.title || '').slice(0, 30),
+    emoji: String(quiz.emoji || '🎲').slice(0, 4),
+    questions: quiz.questions.slice(0, 5).map((q) => ({ q: String(q.q || '').slice(0, 60), options: (q.options || []).slice(0, 6).map((o) => String(o).slice(0, 20)) })),
+    results: quiz.results.slice(0, 8).map((r) => ({ title: String(r.title || '').slice(0, 12), emoji: String(r.emoji || '✨').slice(0, 4), headline: String(r.headline || '').slice(0, 30), content: String(r.content || '').slice(0, 120) })),
+    custom: true,
+  }
+  try {
+    fs.mkdirSync(path.dirname(CUSTOM_PATH), { recursive: true })
+    fs.writeFileSync(CUSTOM_PATH, JSON.stringify(all, null, 2))
+  } catch (e) {
+    console.warn('[quizzes] 自定义题库落盘失败：', e.message)
+  }
+  return true
+}
+
+/** 完整题库 = 内置 + 自定义沉淀 */
+export function allQuizzes() {
+  return { ...QUIZZES, ...loadCustomQuizzes() }
+}
+
+/** 题库标题清单（供建议卡/提示词引用） */
+export function quizCatalog() {
+  return Object.entries(allQuizzes())
+    .filter(([, qz]) => qz.questions && qz.questions.length)
+    .map(([id, qz]) => ({ id, title: qz.title, emoji: qz.emoji }))
+}
+
+/**
+ * Mock 模式通用测验模板：题库没有的主题用规则生成 3 题 + 6 结果并沉淀。
+ * 题目是通用状态映射题（不含诊断），主题词只出现在标题与结果收尾里。
+ */
+export function makeGenericQuiz(topic) {
+  const t = String(topic || '').replace(/测一测|测测|测试|我(是不是|的)/g, '').trim().slice(0, 8) || '状态'
+  return {
+    title: `测一测我的${t}`,
+    emoji: '🎲',
+    questions: [
+      { q: `提到「${t}」，你第一反应是？`, options: ['有点在意', '无所谓', '想弄清楚', '看心情'] },
+      { q: '最近一次遇到相关的事，你通常？', options: ['先观察再行动', '直接冲', '找人聊聊', '能拖就拖'] },
+      { q: '你希望这件事变得？', options: ['更稳一点', '更有趣', '更清楚', '更轻松'] },
+    ],
+    results: [
+      { title: '观察派', emoji: '👀', headline: '你习惯先看清楚再动', content: `面对「${t}」，你倾向先收集信息再做决定。这个习惯很好，只要别让"观察"变成"拖延"。` },
+      { title: '行动派', emoji: '⚡', headline: '你的第一反应是动手', content: `你在「${t}」上很有冲劲。记得在行动间隙回头看看方向，冲得快也要冲得对。` },
+      { title: '连接派', emoji: '🫂', headline: '你习惯先找人聊聊', content: `对你来说，「${t}」是需要有人一起面对的事。把感受说出来，你已经完成了一半。` },
+      { title: '节奏派', emoji: '🌊', headline: '你相信事情有自己的节奏', content: `你不喜欢被「${t}」推着走。给事情一点时间发酵，同时也给自己设一个"再想想"的期限。` },
+    ],
+    custom: true,
+  }
+}
+
+// 供 prompt 内嵌的紧凑题库（含自定义沉淀）
 export function quizSummaryForPrompt() {
   return JSON.stringify(
     Object.fromEntries(
-      Object.entries(QUIZZES).map(([id, qz]) => [
+      Object.entries(allQuizzes()).map(([id, qz]) => [
         id,
         {
           title: qz.title,
           emoji: qz.emoji,
-          questions: qz.questions.map((q) => ({ q: q.q, options: q.options })),
-          results: qz.results.map((r) => ({ title: r.title, emoji: r.emoji, headline: r.headline, content: r.content })),
+          questions: (qz.questions || []).map((q) => ({ q: q.q, options: q.options })),
+          results: (qz.results || []).map((r) => ({ title: r.title, emoji: r.emoji, headline: r.headline, content: r.content })),
         },
       ])
     )
@@ -84,8 +163,8 @@ export function quizSummaryForPrompt() {
 
 // mock 状态机用：按答案确定性选择结果
 export function pickResult(quizId, answers) {
-  const qz = QUIZZES[quizId]
-  if (!qz || !qz.results.length) return null
+  const qz = allQuizzes()[quizId]
+  if (!qz || !qz.results?.length) return null
   let h = 0
   for (const a of answers || []) {
     for (const c of String(a)) h = (h * 31 + c.charCodeAt(0)) >>> 0

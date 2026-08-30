@@ -6,10 +6,11 @@ import { personaSignal } from './cohort.js'
 import { emotionCountsFromTrack, mixEmotionColors, mockMoodNote } from './colors.js'
 import { moodFromCounts } from './mood.js'
 import { aiMoodCard } from './moodImage.js'
-import { QUIZZES, pickResult } from './quizzes.js'
+import { allQuizzes, pickResult, quizCatalog, makeGenericQuiz, saveCustomQuiz } from './quizzes.js'
 import { behaviorSummary } from './behavior.js'
 import { routeSkill } from './skills.js'
 import { goalsSummaryForPrompt } from './goals.js'
+import { fakeTodayISO } from './clock.js'
 
 function llmConfig() {
   return {
@@ -51,7 +52,7 @@ export function parseJson(text) {
   return null
 }
 
-const today = () => new Date().toISOString().slice(0, 10)
+const today = () => fakeTodayISO()
 
 /* ---------------- 主流程：抽取 + 归并 ---------------- */
 
@@ -162,7 +163,7 @@ function mergeIntoProfile(profile, topics, record) {
 
 /* ---------------- 报告生成 ---------------- */
 
-export async function generateReport(profile, tier, todayTrack = '', todayRecord = null, intent = 'none', patterns = []) {
+export async function generateReport(profile, tier, todayTrack = '', todayRecord = null, intent = 'none', patterns = [], streamText = '') {
   const cfg = llmConfig()
   let report
   let base = null
@@ -170,7 +171,7 @@ export async function generateReport(profile, tier, todayTrack = '', todayRecord
     report = mockReport(profile, todayTrack, todayRecord, intent, patterns)
   } else {
     try {
-      const raw = await callLLM(reportMessages(profile, tier, todayTrack, todayRecord, intent, patterns))
+      const raw = await callLLM(reportMessages(profile, tier, todayTrack, todayRecord, intent, patterns, streamText))
       const parsed = parseJson(raw)
       base = mockReport(profile, todayTrack, todayRecord, intent, patterns)
       report = parsed && (parsed.playback || parsed.observations) ? { ...base, ...parsed } : base
@@ -187,6 +188,22 @@ export async function generateReport(profile, tier, todayTrack = '', todayRecord
     report.suggestionTopic = t ? t.name : ''
   }
   if (!report.suggestion) report.suggestionTopic = ''
+  // 三坐标与成长规划兜底（docs/23 §3.2）：LLM 缺字段时用确定性版本补齐；growthPlan 与 suggestion 对齐
+  const b = base || report
+  report.coordinates = report.coordinates && report.coordinates.goal ? report.coordinates : b.coordinates
+  if (!report.growthPlan) report.growthPlan = b.growthPlan || report.suggestion || ''
+  if (!report.suggestion && report.growthPlan) report.suggestion = report.growthPlan
+  if (!report.coordinates) report.coordinates = b.coordinates || {}
+  // 清洗 LLM 输出的"目标维：/自我维：/差距维："前缀（页面标题已带维度名，避免重复）
+  if (report.coordinates && typeof report.coordinates === 'object') {
+    for (const k of ['goal', 'self', 'gap']) {
+      report.coordinates[k] = String(report.coordinates[k] || '').replace(/^(目标维|自我维|差距维)[:：]\s*/, '').trim()
+    }
+  }
+  // P0-2：差距不空——证据不足时不写干巴巴的"看不出差距"，而是给个性化的下一步引导
+  if (!report.coordinates.gap || /看不出明显差距/.test(report.coordinates.gap)) {
+    report.coordinates.gap = gapFallback(profile)
+  }
   report.generatedAt = today()
   report.crisis = report.crisis || !!profile.crisisFlag
 
@@ -232,6 +249,20 @@ function mockReport(profile, todayTrack = '', todayRecord = null, intent = 'none
     observations.push({ text: '今天主要是想说出来，对吧？', quote: '' })
   }
 
+  // 三坐标（确定性兜底版，docs/23 §3.2）：目标/自我/差距 + 成长规划
+  const activeGoals = (profile.goals || []).filter((g) => g.status === 'active')
+  const goalText = activeGoals.length
+    ? activeGoals
+        .map((g) => `目标「${g.title}」已完成 ${g.doneSteps || 0}/${g.totalSteps || 0} 步${g.nextStep ? `，下一步：${g.nextStep}` : ''}`)
+        .join('；')
+    : '今天没有明确表达目标。'
+  const coordinates = {
+    goal: goalText,
+    self: observations[0]?.text || '今天呈现出的模式还不够清晰。',
+    gap: suggestion ? `你希望的方向和今天的节奏之间还有距离，可以从一小步开始：${suggestion}` : '今天还看不出明显差距。',
+  }
+  const growthPlan = suggestion
+
   return {
     playback: free ? `今天你提到：${free}${free.length >= 90 ? '…' : ''}` : '今天还没有记录。',
     observations,
@@ -245,7 +276,30 @@ function mockReport(profile, todayTrack = '', todayRecord = null, intent = 'none
     moodNote: mockMoodNote(counts),
     dominantDomain: dom,
     topTopics,
+    coordinates,
+    growthPlan,
   }
+}
+
+/**
+ * P0-2：差距维的个性化兜底文案。
+ * 证据不足时不写"看不出差距"，而是结合目标/高频主题给用户一个可行动的下一步。
+ */
+function gapFallback(profile) {
+  const activeGoals = (profile.goals || []).filter((g) => g.status === 'active')
+  if (activeGoals.length) {
+    const g = activeGoals[0]
+    const next = (g.steps || []).find((s) => s.status === 'todo')
+    if (next) {
+      return `目标「${g.title}」今天还没有新进展——明天可以从最小一步开始：${next.step}${next.metric ? `（${next.metric}）` : ''}。`
+    }
+    return `目标「${g.title}」的步骤都在推进中——继续按节奏走，周报里会看到差距的变化。`
+  }
+  const top = [...(profile.topics || [])].sort((a, b) => (b.freq || 0) - (a.freq || 0))[0]
+  if (top) {
+    return `「${top.name}」是你最近反复出现的话题——明天记录时多写一句"我希望它变成什么样"，差距就会浮出来。`
+  }
+  return '今天的记录还看不出明显差距——明天多记一句让你卡住的事，差距就会浮出来。'
 }
 
 function pathFor(domain) {
@@ -464,19 +518,85 @@ export function buildProfileSummary(profile) {
 
 export function mockSuggestions(summary = {}) {
   const topic = summary.topTopics?.[0]
-  return {
-    suggestions: [
-      topic ? `聊聊「${topic}」最近怎么样了` : '最近有什么让我纠结的事',
-      '测一测我是什么花',
-      summary.lifeTask ? '我最近该把精力放在哪里' : '测一测我的职业方向',
-    ],
+  const recentEmotion = summary.recentEmotion
+  const goal = summary.goals?.[0]
+
+  // 类型池：关心 / 测验 / 目标|轻松 —— 三张互不相同，顺序随机，次次有变化
+  // text 一律是"用户自己会自然说出口的话"，不是问卷问题或任务指令
+  const pool = [
+    { type: 'care', tag: '关心', title: topic ? `聊聊「${topic.slice(0, 6)}」` : '最近的心情', text: topic ? `「${topic}」的事，想跟你说说` : recentEmotion ? `最近总感觉「${recentEmotion}」，说不上来为什么` : '最近有件事一直压在心上', guide: false },
+    { type: 'quiz', tag: '测验', title: '', text: '', guide: false },
+    goal
+      ? { type: 'goal', tag: '目标', title: '聊聊目标', text: `「${goal.title}」我有点卡住了`, guide: false }
+      : { type: 'fun', tag: '轻松', title: '轻松一下', text: '如果今天是一种颜色，它是什么？', guide: false },
+  ]
+  // 测验卡：从题库（含沉淀）随机选一个主题；偶尔提议一个题库外的新主题（点击后现场生成并沉淀）
+  const catalog = quizCatalog()
+  const rand = catalog[Math.floor(Math.random() * catalog.length)]
+  if (rand && Math.random() < 0.8) {
+    pool[1].title = '小测验'
+    pool[1].text = rand.title.replace(/测一测/, '测测')
+  } else {
+    const freshTopics = ['抗压风格', '金钱观', '拖延模式', '社交能量', '快乐来源']
+    const ft = freshTopics[Math.floor(Math.random() * freshTopics.length)]
+    pool[1].title = '新测验'
+    pool[1].text = `测一测我的${ft}`
   }
+  // 随机顺序（Fisher–Yates）
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[pool[i], pool[j]] = [pool[j], pool[i]]
+  }
+  return { suggestions: pool.map((p) => ({ title: p.title, text: p.text, tag: p.tag, quizHint: p.type === 'quiz' ? (p.text.match(/我的(.*)/)?.[1] || '') : '', guide: p.guide })) }
+}
+
+/* ---------------- 小星·记录引导（Mock 兜底，规则版） ---------------- */
+
+const MOCK_GUIDE_Q = [
+  '那件事发生的时候，你心里冒出来的第一句话是什么？',
+  '后来呢，你是怎么处理的？',
+  '除了那件事，今天还有没有什么小事值得记一笔？',
+]
+
+export function mockStarGuide(history = [], draft = null) {
+  // 控制消息（帮我梳理/选项作答）不进入梳理卡内容
+  const realTurns = (history || []).filter((m) => m.role === 'user' && !/^\[|^我选：/.test(String(m.content || '')))
+  const lastUser = (history || []).filter((m) => m.role === 'user').at(-1)?.content || ''
+  const wantDraft = lastUser.includes('[帮我梳理今天]') || /帮我梳理|帮我总结|就这些|大概这样|说完了|好了$/.test(lastUser)
+  const userTurns = realTurns
+
+  if (draft) {
+    if (wantDraft) return { reply: '好，我按你说的调好了。你再看一眼，想改就直接说。', draft, done: true }
+    return { reply: MOCK_GUIDE_Q[userTurns.length % MOCK_GUIDE_Q.length], draft, done: false }
+  }
+
+  if (userTurns.length === 0) {
+    return wantDraft
+      ? { reply: '还没聊到具体的事——先随便说两句今天的事，我再帮你理成卡片。', draft: null, done: false }
+      : { reply: '我在。想从哪说起，我就陪到哪。', draft: null, done: false }
+  }
+
+  if (wantDraft) {
+    const em = topEmotion(userTurns.map((u) => u.content).join('\n'))
+    return {
+      reply: '好，我把今天理成一张卡片，你可以直接改，改完点"存进日记"。',
+      draft: {
+        summary: userTurns.map((u) => u.content).join('；').slice(0, 60),
+        moments: userTurns.slice(0, 3).map((u) => ({ event: u.content.slice(0, 24), thought: '', emotion: em })),
+        signals: '',
+        unsaid: '',
+        tomorrow: '',
+      },
+      done: true,
+    }
+  }
+
+  return { reply: MOCK_GUIDE_Q[userTurns.length % MOCK_GUIDE_Q.length], draft: null, done: false }
 }
 
 export function mockStar(history = [], quiz = null, summary = {}) {
   const userTurns = (history || []).filter((m) => m.role === 'user')
   const lastUser = userTurns.at(-1)?.content || ''
-  const joined = userTurns.map((u) => u.content).join('\n')
 
   // Skill 调度（P0-2a）：确定性路由优先——goalBreak 命中即执行，不进入闲聊/测验流程
   if (!quiz) {
@@ -484,13 +604,16 @@ export function mockStar(history = [], quiz = null, summary = {}) {
     if (hit?.skill?.id === 'goalBreak') return mockGoalBreak(lastUser, summary)
   }
 
-  // 测验意图识别
-  const intent =
+  // 测验意图识别（题库没有的主题现场生成并沉淀进 custom-quizzes.json）
+  const known =
     /花|花朵/.test(lastUser) ? 'flower'
     : /动物|小动物/.test(lastUser) ? 'animal'
     : /职业|工作方向/.test(lastUser) ? 'career'
     : /能量|运势|状态|精力/.test(lastUser) ? 'energy'
     : null
+  const wantQuiz = /测一测|测测|想测|测个/.test(lastUser)
+  const topicKey = (lastUser.match(/测一测(?:我(?:的|是不是))?([\u4e00-\u9fa5A-Za-z]{2,8})/) || [])[1] || ''
+  const intent = known || (wantQuiz && topicKey ? `quiz-${topicKey}` : null)
 
   if (!quiz && intent) {
     if (intent === 'energy') {
@@ -507,16 +630,24 @@ export function mockStar(history = [], quiz = null, summary = {}) {
         },
       }
     }
-    const qz = QUIZZES[intent]
+    // 已知题库 or 现场生成（沉淀）
+    let quizId = intent
+    let qz = allQuizzes()[quizId]
+    if (!qz) {
+      const topic = intent.replace(/^quiz-/, '')
+      qz = makeGenericQuiz(topic)
+      quizId = `quiz-${topic}`
+      saveCustomQuiz(quizId, qz)
+    }
     return {
       reply: `好呀，来测测看。第 1/${qz.questions.length} 题：`,
-      quiz: { id: intent, title: qz.title, emoji: qz.emoji, index: 1, total: qz.questions.length, question: qz.questions[0].q, options: qz.questions[0].options },
+      quiz: { id: quizId, title: qz.title, emoji: qz.emoji, index: 1, total: qz.questions.length, question: qz.questions[0].q, options: qz.questions[0].options },
       result: null,
     }
   }
 
   if (quiz) {
-    const qz = QUIZZES[quiz.id]
+    const qz = allQuizzes()[quiz.id]
     const next = quiz.index + 1
     if (qz && quiz.index < qz.questions.length) {
       return {
@@ -529,35 +660,16 @@ export function mockStar(history = [], quiz = null, summary = {}) {
     return { reply: '测完啦，这是你的结果：', quiz: null, result: { quizId: quiz.id, ...r } }
   }
 
-  // 普通闲聊（Mock 兜底）
+  // 普通闲聊（Mock 兜底）：像朋友一样承接，不催任务、不把话题拉向别处
   const topic = summary.topTopics?.[0]
-  const reminder = userTurns.length === 1 ? goalsReminderLineForMock(summary.goals) : ''
   const base = topic
-    ? `我在听。你最近常提到「${topic}」，今天想聊它，还是说点别的？`
-    : '我在听，慢慢说。'
+    ? `嗯，我在听。你说到「${topic}」的事，慢慢说。`
+    : '嗯，我在听，你慢慢说。'
   return {
-    reply: reminder ? `${reminder}\n\n${base}` : base,
+    reply: base,
     quiz: null,
     result: null,
   }
-}
-
-/** Mock 开场目标提醒（LLM 模式由 starMessages 提示词生成） */
-function goalsReminderLineForMock(goals) {
-  const list = Array.isArray(goals) ? goals : []
-  if (!list.length) return ''
-  const doing = list.find((g) => g.doneSteps > 0 && g.nextStep)
-  const fresh = list.find((g) => g.doneSteps === 0)
-  const idle = list.find((g) => g.idleDays >= 3)
-  let line = ''
-  if (doing) line = `🎯 你的目标「${doing.title}」已完成 ${doing.doneSteps}/${doing.totalSteps}，下一步可以试试：${doing.nextStep}。`
-  else if (idle) line = `🎯 你的目标「${idle.title}」有 ${idle.idleDays} 天没更新了，今天想为它做点什么吗？`
-  else if (fresh) line = `🎯 你的目标「${fresh.title}」已经拆好 ${fresh.totalSteps} 步，随时可以从第 1 步开始。`
-  const withBonus = list.find((g) => g.bonusTask)
-  if (withBonus && withBonus.bonusTask) {
-    line += `\n\n🎁 今日彩蛋：${withBonus.bonusTask}（完成 +${withBonus.bonusPoints} 分）`
-  }
-  return line
 }
 
 /* ---------------- Skill：目标拆解（goalBreak，P0-2a 新增） ---------------- */
@@ -594,17 +706,26 @@ export function mockGoalBreak(text = '', summary = {}) {
 /** 目标拆解（LLM + Mock 兜底），调用方通过 routeSkill 确定性路由进入 */
 export async function generateGoalBreak(text, summary = {}) {
   const cfg = llmConfig()
-  if (cfg.mock) return mockGoalBreak(text, summary)
-  try {
-    const raw = await callLLM(goalBreakMessages(text, summary))
-    const parsed = parseJson(raw)
-    if (parsed?.skill?.id === 'goalBreak' && Array.isArray(parsed.skill.steps) && parsed.skill.steps.length) {
-      return { reply: parsed.reply || '我们把目标拆成几步：', quiz: null, result: null, skill: parsed.skill }
+  let out = null
+  if (!cfg.mock) {
+    try {
+      const raw = await callLLM(goalBreakMessages(text, summary))
+      const parsed = parseJson(raw)
+      if (parsed?.skill?.id === 'goalBreak' && Array.isArray(parsed.skill.steps) && parsed.skill.steps.length) {
+        out = { reply: parsed.reply || '我们把目标拆成几步：', quiz: null, result: null, skill: parsed.skill }
+      }
+    } catch (e) {
+      console.warn('[engine] 目标拆解失败，降级 Mock：', e.message)
     }
-  } catch (e) {
-    console.warn('[engine] 目标拆解失败，降级 Mock：', e.message)
   }
-  return mockGoalBreak(text, summary)
+  if (!out) out = mockGoalBreak(text, summary)
+  // P0-4：每个步骤必须带可量化 metric（含数字），LLM 生成主观描述时补默认量化词
+  for (const s of out.skill.steps || []) {
+    if (!s.metric || !/\d/.test(s.metric)) {
+      s.metric = s.metric ? `${s.metric} · 完成 1 次` : '完成 1 次'
+    }
+  }
+  return out
 }
 
 /* ---------------- 周期报告（周/月/季/年） ---------------- */

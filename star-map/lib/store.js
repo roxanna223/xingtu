@@ -115,7 +115,7 @@ export function countUsers() {
 
 /* ---------------- profiles(画像) ---------------- */
 
-const PROFILE_KEYS = ['topics', 'edges', 'feedback_log', 'emotion_series', 'reports', 'period_reports', 'behavior', 'last_report', 'opener_idx', 'last_openers', 'adapt_log', 'generating', 'adoptions', 'skill_log', 'goals']
+const PROFILE_KEYS = ['topics', 'edges', 'feedback_log', 'emotion_series', 'reports', 'period_reports', 'behavior', 'last_report', 'opener_idx', 'last_openers', 'adapt_log', 'generating', 'adoptions', 'skill_log', 'goals', 'persona_meta']
 
 export function readProfile(userId) {
   const d = getDB()
@@ -146,6 +146,7 @@ export function readProfile(userId) {
     adoptions: [],
     skillLog: [],
     goals: [],
+    personaMeta: [],
   }
   if (!row) return base
   const p = base
@@ -165,21 +166,22 @@ export function readProfile(userId) {
   p.adoptions = jparse(row.adoptions, [])
   p.skillLog = jparse(row.skill_log, [])
   p.goals = jparse(row.goals, [])
+  p.personaMeta = jparse(row.persona_meta, [])
   return p
 }
 
 export function writeProfile(userId, p) {
   const d = getDB()
   d.prepare(
-    `INSERT INTO profiles (user_id, topics, edges, feedback_log, emotion_series, reports, period_reports, behavior, last_report, opener_idx, last_openers, adapt_log, generating, crisis_flag, adoptions, skill_log, goals, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `INSERT INTO profiles (user_id, topics, edges, feedback_log, emotion_series, reports, period_reports, behavior, last_report, opener_idx, last_openers, adapt_log, generating, crisis_flag, adoptions, skill_log, goals, persona_meta, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(user_id) DO UPDATE SET
        topics=excluded.topics, edges=excluded.edges, feedback_log=excluded.feedback_log,
        emotion_series=excluded.emotion_series, reports=excluded.reports, period_reports=excluded.period_reports,
        behavior=excluded.behavior, last_report=excluded.last_report, opener_idx=excluded.opener_idx,
        last_openers=excluded.last_openers, adapt_log=excluded.adapt_log, generating=excluded.generating,
        crisis_flag=excluded.crisis_flag, adoptions=excluded.adoptions, skill_log=excluded.skill_log,
-       goals=excluded.goals, updated_at=excluded.updated_at`
+       goals=excluded.goals, persona_meta=excluded.persona_meta, updated_at=excluded.updated_at`
   ).run(
     userId,
     jstr(p.topics ?? []),
@@ -198,6 +200,7 @@ export function writeProfile(userId, p) {
     jstr(p.adoptions ?? []),
     jstr(p.skillLog ?? []),
     jstr(p.goals ?? []),
+    jstr(p.personaMeta ?? []),
     now()
   )
   // 用户维度字段(engine/onboard 会改 p.user.*)同步落 users 表,避免丢失
@@ -398,4 +401,101 @@ export function skillsOverview() {
     }
   }
   return Object.values(by).sort((a, b) => b.total - a.total)
+}
+
+/* ---------------- journals(日记模块,P0) ---------------- */
+
+export function readJournal(userId, date) {
+  const row = getDB().prepare('SELECT date, content, mood, updated_at FROM journals WHERE user_id = ? AND date = ?').get(userId, date)
+  if (!row) return null
+  return { date: row.date, content: row.content || '', mood: jparse(row.mood, []), updatedAt: row.updated_at }
+}
+
+/** 保存日记（content 全文 + mood 情绪点选数组）；不存在则插入，存在则更新 */
+export function writeJournal(userId, date, content, mood = []) {
+  const d = getDB()
+  d.prepare(
+    `INSERT INTO journals (user_id, date, content, mood, updated_at) VALUES (?, ?, ?, ?, ?)
+     ON CONFLICT(user_id, date) DO UPDATE SET content=excluded.content, mood=excluded.mood, updated_at=excluded.updated_at`
+  ).run(userId, date, String(content || ''), jstr(Array.isArray(mood) ? mood : []), now())
+}
+
+export function listJournalDays(userId) {
+  return getDB()
+    .prepare('SELECT date FROM journals WHERE user_id = ? ORDER BY date')
+    .all(userId)
+    .map((r) => r.date)
+}
+
+/* ---------------- stream(人生事件流,P0) ---------------- */
+
+export function appendStream(userId, { day, kind, data }) {
+  getDB()
+    .prepare('INSERT INTO stream (user_id, day, kind, ts, data) VALUES (?, ?, ?, ?, ?)')
+    .run(userId, String(day).slice(0, 10), String(kind || '').slice(0, 24), now(), jstr(data ?? {}))
+}
+
+/** 按 6:00 划日读取一天的事件流（按 ts 升序） */
+export function readStream(userId, day) {
+  return getDB()
+    .prepare('SELECT kind, ts, data FROM stream WHERE user_id = ? AND day = ? ORDER BY ts ASC, id ASC')
+    .all(userId, day)
+    .map((r) => ({ kind: r.kind, ts: r.ts, data: jparse(r.data, {}) }))
+}
+
+/** 读取区间 [startDay, endDay] 的事件流（供周期聚合） */
+export function readStreamRange(userId, startDay, endDay) {
+  return getDB()
+    .prepare('SELECT day, kind, ts, data FROM stream WHERE user_id = ? AND day >= ? AND day <= ? ORDER BY day, ts, id')
+    .all(userId, startDay, endDay)
+    .map((r) => ({ day: r.day, kind: r.kind, ts: r.ts, data: jparse(r.data, {}) }))
+}
+
+/** 有事件流的所有日期（含仅有对话、没有日记的日子） */
+export function listStreamDays(userId) {
+  return getDB()
+    .prepare('SELECT DISTINCT day FROM stream WHERE user_id = ? ORDER BY day')
+    .all(userId)
+    .map((r) => r.day)
+}
+
+/* ---------------- persona(小星进化层个人资产,P0) ---------------- */
+
+const PERSONA_KINDS = ['self', 'persona', 'working']
+
+export function readPersonaDocs(userId) {
+  const rows = getDB().prepare('SELECT kind, content, updated_at FROM persona WHERE user_id = ?').all(userId)
+  const map = { self: '', persona: '', working: '' }
+  for (const r of rows) if (PERSONA_KINDS.includes(r.kind)) map[r.kind] = r.content || ''
+  return map
+}
+
+export function writePersonaDoc(userId, kind, content) {
+  if (!PERSONA_KINDS.includes(kind)) return
+  getDB()
+    .prepare(
+      `INSERT INTO persona (user_id, kind, content, updated_at) VALUES (?, ?, ?, ?)
+       ON CONFLICT(user_id, kind) DO UPDATE SET content=excluded.content, updated_at=excluded.updated_at`
+    )
+    .run(userId, kind, String(content || ''), now())
+}
+
+export function deletePersonaDocs(userId) {
+  getDB().prepare('DELETE FROM persona WHERE user_id = ?').run(userId)
+}
+
+/* ---------------- jobs(后台作业幂等标记,P1) ---------------- */
+
+export function jobDone(userId, day, kind) {
+  return !!getDB().prepare('SELECT id FROM jobs WHERE user_id = ? AND day = ? AND kind = ?').get(userId, day, kind)
+}
+
+export function markJob(userId, day, kind) {
+  getDB()
+    .prepare('INSERT OR IGNORE INTO jobs (user_id, day, kind, done_at) VALUES (?, ?, ?, ?)')
+    .run(userId, String(day).slice(0, 10), String(kind || '').slice(0, 24), now())
+}
+
+export function listUserIds() {
+  return getDB().prepare('SELECT id FROM users ORDER BY id').all().map((r) => r.id)
 }

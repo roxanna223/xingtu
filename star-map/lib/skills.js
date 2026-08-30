@@ -6,6 +6,8 @@
 // 3. 全程留痕：每次调度写 profile.skillLog（来源 rule|llm、结果 started|completed），后台可统计触发率/完成率
 // 下线标准：连续 2 周触发率 <1% 且无 completed → 进入观察名单，观察 1 周仍无回升则下线（从 SKILLS 移除 + 日志记录）
 
+import { fakeTodayISO } from './clock.js'
+
 export const SKILLS = [
   {
     id: 'quiz',
@@ -75,7 +77,7 @@ export function recordSkillLog(profile, { skillId, source, outcome, detail = '' 
   const skill = getSkill(skillId)
   profile.skillLog = profile.skillLog || []
   profile.skillLog.push({
-    date: new Date().toISOString().slice(0, 10),
+    date: fakeTodayISO(),
     skillId,
     skillName: skill ? skill.name : skillId,
     category: skill ? skill.category : '',

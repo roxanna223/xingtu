@@ -8,10 +8,11 @@ import { usePathname } from 'next/navigation'
 export default function NavBar() {
   const path = usePathname()
   const [user, setUser] = useState(null)
+  const [debugOn, setDebugOn] = useState(false)
 
   const tabs = [
     ['/', '🏠', '首页'],
-    ['/record', '🗺️', '记录'],
+    ['/diary', '📖', '日记'],
     ['/star-map', '🌌', '星图'],
     ['/goals', '🎯', '计划'],
     ['/report', '📜', '报告'],
@@ -19,7 +20,10 @@ export default function NavBar() {
   ]
 
   useEffect(() => {
-    fetch('/api/status').then((r) => r.json()).then((s) => setUser(s.user))
+    fetch('/api/status').then((r) => r.json()).then((s) => {
+      setUser(s.user)
+      setDebugOn(!!s.debugAvailable)
+    })
   }, [path])
 
   async function logout() {
@@ -41,6 +45,9 @@ export default function NavBar() {
                 <span>{user.starSymbol ? `${user.starSymbol} ` : '✦ '}<b>{user.username}</b></span>
                 {user.role === 'admin' && (
                   <Link href="/admin" className="login-skip" style={{ textDecoration: 'none' }}>管理</Link>
+                )}
+                {debugOn && (
+                  <Link href="/debug" className="login-skip" style={{ textDecoration: 'none', color: 'var(--orange)' }}>调试</Link>
                 )}
                 <Link href="/settings" className="login-skip" style={{ textDecoration: 'none' }}>设置</Link>
                 <button className="login-skip" onClick={logout}>退出</button>

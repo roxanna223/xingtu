@@ -9,8 +9,9 @@
 
 import { callLLM, parseJson, goalTarget } from './engine.js'
 import { goalSyncMessages, bonusTaskMessages, structuredLogMessages } from './prompts.js'
+import { fakeNow, fakeTodayISO } from './clock.js'
 
-const nowDay = () => new Date().toISOString().slice(0, 10)
+const nowDay = () => fakeTodayISO()
 
 /**
  * 类型归一（修复 v1 旧目标无 type 字段被误判为客观的问题）。
@@ -453,7 +454,7 @@ function mockBonusTask(goal) {
       : /学习|读书|英语|技能|转行|面试|求职|秋招/.test(t)
         ? ['今天投出/整理 1 个岗位并记录', '读 10 页书并写下 3 句话收获', '给一个前辈/同行发一条请教消息', '整理一次自己的作品/简历亮点清单']
         : ['今天完成一件拖延了 3 天以上的小事', '给自己留 20 分钟完全放空', '记录今天最有成就感的一个瞬间', '把目标读一遍，并写下此刻的进度感']
-  const hash = new Date().getDate() + goal.title.length
+  const hash = fakeNow().getDate() + goal.title.length
   const task = pool[hash % pool.length]
   return { task, points: 15, flavor: '今日彩蛋' }
 }

@@ -2,6 +2,8 @@
 // 目标：根据用户的语言/行为/反馈，持续校正所有对话 Agent 的风格与内容（自迭代机制的数据基础）
 // 当前为规则基线版；LLM 深度抽取（语言风格、价值观、回避主题）见 docs/07 的 roadmap
 
+import { fakeTodayISO } from './clock.js'
+
 const EMO_KW = ['焦虑', '疲惫', '迷茫', '愤怒', '平静', '期待', '低落', '充实', '累', '烦', '慌', '开心', '难过', 'emo']
 const ABS_KW = ['为什么', '意义', '本质', '逻辑', '价值', '底层', '原因', '原理']
 
@@ -34,7 +36,7 @@ export function updateBehavior(profile, texts = []) {
     b.questionRatio = b.questionRatio * 0.7 + (/\?|？/.test(s) ? 1 : 0) * 0.3
   }
   b.openDepth = b.avgLen < 14 ? '浅' : b.avgLen < 45 ? '中' : '深'
-  b.updatedAt = new Date().toISOString().slice(0, 10)
+  b.updatedAt = fakeTodayISO()
   profile.behavior = b
   return b
 }

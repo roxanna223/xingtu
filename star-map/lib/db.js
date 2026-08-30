@@ -193,6 +193,70 @@ function migrate(d) {
       throw e
     }
   }
+  if (v < 7) {
+    // v7:P0 方向重构(docs/23 统一方案)
+    //  - journals:日记模块(每日归档文档,纯文本事实源,不强制)
+    //  - stream:人生事件流(日记/对话/情绪点选统一为带时间戳事件,日报按 6:00 划日聚合)
+    //  - persona:小星进化层个人资产(self/persona/working 三份文档,用户可见可删)
+    //  - profiles.persona_meta:本能条目(trigger/behavior/confidence/domain/evidence/trust)
+    d.exec('BEGIN')
+    try {
+      d.exec(`CREATE TABLE IF NOT EXISTS journals (
+        id         INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        date       TEXT NOT NULL,
+        content    TEXT NOT NULL DEFAULT '',
+        mood       TEXT NOT NULL DEFAULT '[]',
+        updated_at TEXT NOT NULL,
+        UNIQUE(user_id, date)
+      )`)
+      d.exec(`CREATE TABLE IF NOT EXISTS stream (
+        id      INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        day     TEXT NOT NULL,
+        kind    TEXT NOT NULL,
+        ts      TEXT NOT NULL,
+        data    TEXT NOT NULL DEFAULT '{}'
+      )`)
+      d.exec(`CREATE INDEX IF NOT EXISTS idx_stream_user_day ON stream(user_id, day)`)
+      d.exec(`CREATE TABLE IF NOT EXISTS persona (
+        id         INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        kind       TEXT NOT NULL,
+        content    TEXT NOT NULL DEFAULT '',
+        updated_at TEXT NOT NULL,
+        UNIQUE(user_id, kind)
+      )`)
+      const cols = d.prepare('PRAGMA table_info(profiles)').all()
+      if (!cols.some((c) => c.name === 'persona_meta')) {
+        d.exec("ALTER TABLE profiles ADD COLUMN persona_meta TEXT NOT NULL DEFAULT '[]'")
+      }
+      d.exec('PRAGMA user_version = 7')
+      d.exec('COMMIT')
+    } catch (e) {
+      d.exec('ROLLBACK')
+      throw e
+    }
+  }
+  if (v < 8) {
+    // v8:后台作业幂等标记(P1 6:00 定时预生成日报 + 进化反思):每用户每天每类作业只跑一次
+    d.exec('BEGIN')
+    try {
+      d.exec(`CREATE TABLE IF NOT EXISTS jobs (
+        id      INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        day     TEXT NOT NULL,
+        kind    TEXT NOT NULL,
+        done_at TEXT NOT NULL,
+        UNIQUE(user_id, day, kind)
+      )`)
+      d.exec('PRAGMA user_version = 8')
+      d.exec('COMMIT')
+    } catch (e) {
+      d.exec('ROLLBACK')
+      throw e
+    }
+  }
 }
 
 export function closeDB() {
