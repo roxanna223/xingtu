@@ -8,7 +8,7 @@
 // 量化口径：完成度 = done 步骤数 / 总步骤数；停滞天数 = 今天 - lastCheckin
 
 import { callLLM, parseJson, goalTarget } from './engine.js'
-import { goalSyncMessages, bonusTaskMessages, structuredLogMessages } from './prompts.js'
+import { goalSyncMessages, structuredLogMessages } from './prompts.js'
 import { fakeNow, fakeTodayISO } from './clock.js'
 
 const nowDay = () => fakeTodayISO()
@@ -20,6 +20,7 @@ const nowDay = () => fakeTodayISO()
  */
 export function normalizeGoals(profile) {
   for (const g of profile.goals || []) {
+    if (!g.period) g.period = 'daily'
     for (const s of g.steps || []) {
       if (!s.type) {
         s.type = /记录|写下|复盘|总结|称重|称一|测量|拍照|整理|感受|吃了什么|写一篇|写下|总结/.test(s.step) ? 'journal' : 'checkin'
@@ -92,15 +93,12 @@ export function createGoalFromSkill(profile, skill, fallbackText = '') {
     id: 'g' + Math.random().toString(36).slice(2, 8),
     title,
     summary: String(skill?.summary || '').slice(0, 60),
+    period: ['daily', 'weekly', 'monthly'].includes(skill?.period) ? skill.period : /年|长期|三个月|半年|季度/.test(title) ? 'monthly' : /周|一周|7天|七天/.test(title) ? 'weekly' : 'daily',
     createdAt: nowDay(),
     status: 'active',
     steps,
     progress: [{ date: nowDay(), source: 'create', type: 'created', stepIndex: null, note: `拆解为 ${steps.length} 步` }],
     lastCheckin: nowDay(),
-    // 维度④激励：积分账户 + 每日彩蛋任务
-    points: 0,
-    pointsLedger: [],
-    dailyBonus: null,
   }
   profile.goals = profile.goals || []
   profile.goals.unshift(goal)
@@ -226,7 +224,7 @@ export function stepStreak(step) {
 
 /**
  * 每日打卡/记录（目标系统 v2.2 核心交互）：
- * - 无细分项：journal 需内容 +10 / checkin 一键 +5；同日一次；连续 3/7/14 加成；达标自动完成；
+ * - 无细分项：journal 需内容、checkin 可一键；同日一次；达标自动完成；
  * - 有细分项（能拆就拆，如三餐→早/午/晚）：可随时单独记录某一项（+该项 points）；
  *   subIndex=null 时走「随手记」——AI 梳理整段内容并自动分发到未完成的细分项（规则兜底）；
  *   今天所有细分项都完成 → 才算"完整记录一天"（计入达标天数/连续天数）。
@@ -250,7 +248,6 @@ export async function stepRecord(profile, { goalId, stepIndex, subIndex = null, 
       if (step.type === 'journal' && !t) return { error: `写一写「${sub.name}」的内容再提交` }
       sub.doneAt = today
       sub.text = t || sub.name
-      addPoints(goal, sub.points || 5, 'subitem', `${step.step.slice(0, 12)}·${sub.name}${t ? '：' + t.slice(0, 16) : ''}`)
       applied.push({ subIndex: Number(subIndex), text: t, name: sub.name })
     } else {
       // 随手记：AI 梳理 → 分发到未完成细分项（LLM + 规则兜底）
@@ -273,7 +270,6 @@ export async function stepRecord(profile, { goalId, stepIndex, subIndex = null, 
         if (!sub || sub.doneAt === today) continue
         sub.doneAt = today
         sub.text = String(it.text || sub.name).slice(0, 40)
-        addPoints(goal, sub.points || 5, 'subitem', `${step.step.slice(0, 12)}·${sub.name}：${sub.text.slice(0, 16)}`)
         applied.push({ subIndex: Number(it.subIndex), text: sub.text, name: sub.name })
       }
     }
@@ -290,13 +286,12 @@ export async function stepRecord(profile, { goalId, stepIndex, subIndex = null, 
     }
     goal.lastCheckin = today
 
-    // 今天全部细分项完成 → 记完整一天（计入达标/连续），发连续加成，查自动完成
+    // 今天全部细分项完成 → 记完整一天（计入达标天数），查自动完成
     if (subs.every((s) => s.doneAt === today)) {
       const fullText = subs.map((s) => `${s.name}:${s.text || ''}`).join('；')
       step.logs = step.logs || []
-      step.logs.push({ date: today, text: fullText, points: 0 })
+      step.logs.push({ date: today, text: fullText })
       pushProgress(goal, { date: today, source: 'manual', type: step.type === 'journal' ? 'journal' : 'checkin', stepIndex, note: '今日全部细分项完成 ✓' })
-      applyStreak(goal, step)
       const days = new Set(step.logs.map((l) => l.date)).size
       if (days >= requiredCount(step.metric)) finishStep(profile, goal, step, stepIndex, '细分项全部完成自动达标')
     }
@@ -308,10 +303,7 @@ export async function stepRecord(profile, { goalId, stepIndex, subIndex = null, 
   step.logs = step.logs || []
   if (step.logs.some((l) => l.date === today)) return { error: '今天已经记过了，可用 ✏️ 补充修改' }
 
-  const base = step.type === 'journal' ? 10 : 5
-  step.logs.push({ date: today, text: t || (step.type === 'journal' ? '完成记录' : '打卡'), points: base })
-  addPoints(goal, base, step.type === 'journal' ? 'journal' : 'checkin', `${step.step.slice(0, 16)}${t ? '：' + t.slice(0, 20) : ''}`)
-  applyStreak(goal, step)
+  step.logs.push({ date: today, text: t || (step.type === 'journal' ? '完成记录' : '打卡') })
   pushProgress(goal, { date: today, source: 'manual', type: step.type === 'journal' ? 'journal' : 'checkin', stepIndex, note: t || '打卡' })
   goal.lastCheckin = today
 
@@ -320,29 +312,14 @@ export async function stepRecord(profile, { goalId, stepIndex, subIndex = null, 
   return { ok: true, goal, step, streak: stepStreak(step) }
 }
 
-/** 连续打卡加成（每档只发一次）：3 天 +5 / 7 天 +10 / 14 天 +20 */
-function applyStreak(goal, step) {
-  const streak = stepStreak(step)
-  const awardMap = { 3: 5, 7: 10, 14: 20 }
-  step.streakAwarded = step.streakAwarded || []
-  for (const [n, pts] of Object.entries(awardMap)) {
-    if (streak >= Number(n) && !step.streakAwarded.includes(Number(n))) {
-      step.streakAwarded.push(Number(n))
-      addPoints(goal, pts, 'streak', `连续 ${n} 天打卡加成`)
-    }
-  }
-}
-
-/** 步骤达标完成（+30），全步骤完成则目标达成（+100） */
+/** 步骤达标完成，全步骤完成则目标达成 */
 function finishStep(profile, goal, step, stepIndex, note) {
   const today = nowDay()
   step.status = 'done'
   step.doneAt = today
-  addPoints(goal, 30, 'step_done', `完成步骤：${step.step.slice(0, 16)}`)
   pushProgress(goal, { date: today, source: 'manual', type: 'step_done', stepIndex, note })
   if (goal.steps.every((s) => s.status === 'done')) {
     goal.status = 'done'
-    addPoints(goal, 100, 'goal_done', `目标「${goal.title}」达成`)
     pushProgress(goal, { date: today, source: 'manual', type: 'goal_done', stepIndex: null, note: '全部步骤完成 🎉' })
   }
 }
@@ -398,79 +375,7 @@ function isNegatedText(text) {
   return NEG_RE.test(s) && !DOUBLE_NEG_RE.test(s)
 }
 
-/* ---------------- 维度④激励：积分 + 每日彩蛋任务 ---------------- */
-
-export function addPoints(goal, delta, source, note = '') {
-  goal.points = (goal.points || 0) + delta
-  goal.pointsLedger = goal.pointsLedger || []
-  goal.pointsLedger.push({ date: nowDay(), source, delta, note: String(note).slice(0, 40) })
-  if (goal.pointsLedger.length > 100) goal.pointsLedger = goal.pointsLedger.slice(-100)
-}
-
-/** 等级：0 起步 → 50 铜星 → 150 银星 → 300 金星 */
-export function levelOf(points) {
-  const p = points || 0
-  if (p >= 300) return { name: '金星', next: null }
-  if (p >= 150) return { name: '银星', next: 300 }
-  if (p >= 50) return { name: '铜星', next: 150 }
-  return { name: '起步', next: 50 }
-}
-
-/**
- * 每日彩蛋任务：每天 0 点后为每个活跃目标懒生成一条个性化小任务（LLM 生成 + Mock 模板兜底）。
- * 低门槛、一天内可完成、和主线步骤互补——给"每天一样的计划"增加新鲜感和额外积分。
- */
-export async function ensureDailyBonus(profile, goal) {
-  const today = nowDay()
-  if (goal.dailyBonus && goal.dailyBonus.date === today) return goal.dailyBonus
-  let bonus = null
-  if (process.env.DEEPSEEK_API_KEY) {
-    try {
-      const raw = await callLLM(bonusTaskMessages(goal))
-      const parsed = parseJson(raw)
-      if (parsed?.task) {
-        bonus = {
-          task: String(parsed.task).slice(0, 60),
-          points: [10, 15, 20].includes(Number(parsed.points)) ? Number(parsed.points) : 15,
-          flavor: String(parsed.flavor || '').slice(0, 30),
-        }
-      }
-    } catch (e) {
-      console.warn('[goals] 彩蛋任务生成失败，降级 Mock：', e.message)
-    }
-  }
-  if (!bonus) bonus = mockBonusTask(goal)
-  goal.dailyBonus = { date: today, ...bonus, doneAt: null }
-  return goal.dailyBonus
-}
-
-/** Mock 模板：按目标标题关键词给固定小任务池，按日期轮换，保证每天不同 */
-function mockBonusTask(goal) {
-  const t = goal.title || ''
-  const pool = /减肥|瘦|体重|身材/.test(t)
-    ? ['今天选一种从没吃过的蔬菜', '饭后散步 15 分钟，不坐电梯改走楼梯', '今天戒掉一杯含糖饮料', '对镜拍一张今天的照片，存给自己']
-    : /熬夜|睡|作息|早睡/.test(t)
-      ? ['今晚比昨天早 10 分钟放下手机', '把卧室灯光调暗一小时再睡', '睡前写一句"明天想做的第一件事"', '今天下午 4 点后不碰咖啡和奶茶']
-      : /学习|读书|英语|技能|转行|面试|求职|秋招/.test(t)
-        ? ['今天投出/整理 1 个岗位并记录', '读 10 页书并写下 3 句话收获', '给一个前辈/同行发一条请教消息', '整理一次自己的作品/简历亮点清单']
-        : ['今天完成一件拖延了 3 天以上的小事', '给自己留 20 分钟完全放空', '记录今天最有成就感的一个瞬间', '把目标读一遍，并写下此刻的进度感']
-  const hash = fakeNow().getDate() + goal.title.length
-  const task = pool[hash % pool.length]
-  return { task, points: 15, flavor: '今日彩蛋' }
-}
-
-export function completeBonus(profile, { goalId }) {
-  const goal = (profile.goals || []).find((g) => g.id === goalId)
-  if (!goal || goal.status === 'archived') return { error: '目标不存在' }
-  const today = nowDay()
-  if (!goal.dailyBonus || goal.dailyBonus.date !== today) return { error: '今天的彩蛋任务还没生成' }
-  if (goal.dailyBonus.doneAt) return { error: '今天已经领过奖励了' }
-  goal.dailyBonus.doneAt = nowDay()
-  addPoints(goal, goal.dailyBonus.points, 'bonus', `彩蛋：${goal.dailyBonus.task.slice(0, 24)}`)
-  pushProgress(goal, { date: today, source: 'manual', type: 'bonus', stepIndex: null, note: `彩蛋完成 +${goal.dailyBonus.points}：${goal.dailyBonus.task.slice(0, 24)}` })
-  goal.lastCheckin = today
-  return { ok: true, goal }
-}
+/* ---------------- 手动操作 ---------------- */
 
 /** 补记/修改今天的备注（客观任务完成后想补一句，或修正主观记录内容）；不加分不重复计算 */
 export function stepNote(profile, { goalId, stepIndex, text }) {
@@ -500,7 +405,6 @@ export function toggleGoalStep(profile, { goalId, stepIndex, done }) {
     if (step.status === 'done') return { error: '该步骤已完成' }
     step.status = 'done'
     step.doneAt = today
-    addPoints(goal, 30, 'step_done', `完成步骤：${step.step.slice(0, 16)}`)
     pushProgress(goal, { date: today, source: 'manual', type: 'step_done', stepIndex, note: step.step.slice(0, 20) })
   } else {
     step.status = 'todo'
@@ -511,7 +415,6 @@ export function toggleGoalStep(profile, { goalId, stepIndex, done }) {
   if (goal.steps.length && goal.steps.every((s) => s.status === 'done')) {
     if (goal.status !== 'done') {
       goal.status = 'done'
-      addPoints(goal, 100, 'goal_done', `目标「${goal.title}」达成`)
       pushProgress(goal, { date: today, source: 'manual', type: 'goal_done', stepIndex: null, note: '全部步骤完成 🎉' })
     }
   } else if (goal.status === 'done') goal.status = 'active'
@@ -537,6 +440,30 @@ function daysBetween(a, b) {
   return Math.round((new Date(b) - new Date(a)) / 86400000)
 }
 
+/** 主页"今天的一步"：优先日更目标的最小一步；只有周更/月更目标时按周期提示；无目标返回 null */
+export function todayStepFor(profile) {
+  normalizeGoals(profile)
+  const active = (profile.goals || []).filter((g) => g.status === 'active')
+  if (!active.length) return null
+  const daily = active.filter((g) => (g.period || 'daily') === 'daily')
+  const pick = daily.length ? daily : active
+  const goal = pick[0]
+  const idx = goal.steps.findIndex((s) => s.status === 'todo')
+  const periodLabel = goal.period === 'weekly' ? '周更' : goal.period === 'monthly' ? '月更' : '日更'
+  const doneToday = idx >= 0 && (goal.steps[idx].logs || []).some((l) => l.date === nowDay())
+  return {
+    goalId: goal.id,
+    goalTitle: goal.title,
+    stepIndex: idx,
+    step: idx >= 0 ? goal.steps[idx].step : '全部步骤已完成 🎉',
+    metric: idx >= 0 ? goal.steps[idx].metric : periodLabel,
+    type: idx >= 0 ? goal.steps[idx].type : 'note',
+    period: goal.period || 'daily',
+    doneToday,
+    idleDays: daysBetween(goal.lastCheckin, nowDay()),
+  }
+}
+
 /** 活跃目标摘要（注入小星/报告提示词用；控制体积只给关键字段） */
 export function goalsSummaryForPrompt(profile) {
   normalizeGoals(profile)
@@ -546,22 +473,17 @@ export function goalsSummaryForPrompt(profile) {
     .map((g) => {
       const doneSteps = g.steps.filter((s) => s.status === 'done').length
       const next = g.steps.find((s) => s.status === 'todo')
-      const level = levelOf(g.points)
-      const bonusToday = g.dailyBonus && g.dailyBonus.date === nowDay() && !g.dailyBonus.doneAt ? g.dailyBonus : null
       return {
         id: g.id,
         title: g.title,
+        period: g.period || 'daily',
         doneSteps,
         totalSteps: g.steps.length,
         nextStep: next ? next.step : null,
         nextMetric: next ? next.metric : null,
         nextType: next ? next.type : null,
         idleDays: daysBetween(g.lastCheckin, nowDay()),
-        points: g.points || 0,
-        level: level.name,
-        bonusTask: bonusToday ? bonusToday.task : null,
-        bonusPoints: bonusToday ? bonusToday.points : null,
-        recentNotes: (g.progress || []).slice(-2).map((p) => `${p.date} ${p.type === 'step_done' ? '完成一步' : p.type === 'mention' ? '有进展' : p.type === 'bonus' ? '彩蛋完成' : p.type}`),
+        recentNotes: (g.progress || []).slice(-2).map((p) => `${p.date} ${p.type === 'step_done' ? '完成一步' : p.type === 'mention' ? '有进展' : p.type}`),
       }
     })
 }

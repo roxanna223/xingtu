@@ -42,7 +42,7 @@ export default function NavBar() {
           <span className="topbar-user">
             {user && (
               <>
-                <span>{user.starSymbol ? `${user.starSymbol} ` : '✦ '}<b>{user.username}</b></span>
+                <span>✦ <b>{user.username}</b></span>
                 {user.role === 'admin' && (
                   <Link href="/admin" className="login-skip" style={{ textDecoration: 'none' }}>管理</Link>
                 )}

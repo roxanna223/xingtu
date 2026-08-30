@@ -10,7 +10,6 @@ export async function GET(req) {
   return Response.json({
     user: {
       username: auth.user.username,
-      starSign: auth.user.starSign || null,
       role: auth.user.role,
       createdAt: auth.user.createdAt,
       lastActiveAt: auth.user.lastActiveAt,

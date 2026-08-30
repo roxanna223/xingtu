@@ -13,6 +13,9 @@ export function formatStream(events = []) {
         const mood = Array.isArray(d.mood) && d.mood.length ? `（心情：${d.mood.join('、')}）` : ''
         return `日记：${String(d.text || '').trim()}${mood}`
       }
+      if (e.kind === 'diary_edit') {
+        return `用户更新了当天日记：${String(d.text || '').trim()}`
+      }
       return ''
     })
     .filter(Boolean)

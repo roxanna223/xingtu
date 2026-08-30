@@ -118,8 +118,6 @@ export function rebuildPersonaDocs(userId, profile) {
     `# 我是谁（小星对用户的理解）`,
     '',
     `- 职业阶段：${profile.user?.careerStage || '未知'}`,
-    `- 人生任务：${profile.user?.cohort?.lifeTask || '未知'}`,
-    `- 星座：${profile.user?.starSign || '未填'}`,
     top.length ? `- 长期关心的主题：${top.map((x) => x.name).join('、')}` : '- 长期关心的主题：（还没积累够）',
     goals.length ? `- 进行中的目标：${goals.join('、')}` : '',
   ]

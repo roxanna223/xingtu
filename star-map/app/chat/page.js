@@ -4,8 +4,6 @@ import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import NavBar from '@/components/NavBar'
 
-const EMOTION_SET = new Set(['焦虑', '疲惫', '迷茫', '愤怒', '平静', '期待', '低落', '充实'])
-
 export default function StarChatPage() {
   const [messages, setMessages] = useState([])
   const [quiz, setQuiz] = useState(null)
@@ -19,8 +17,10 @@ export default function StarChatPage() {
   const [draftSaved, setDraftSaved] = useState(false) // 当前梳理卡是否已存进日记
   const recRef = useRef(null)
   const endRef = useRef(null)
+  const inputRef = useRef(null)
+  const pendingRef = useRef('') // 思考中排队的消息：输入框永远自由，发送自动排队
   const sessionRef = useRef(null) // 服务端持久化会话，刷新可恢复
-  const draftRef = useRef(null) // 最新梳理卡（随对话更新，不渲染编辑区）
+  const draftRef = useRef(null) // 最新梳理小结（随对话更新，不渲染编辑区）
   const guideRef = useRef(false)
   guideRef.current = guide
 
@@ -32,6 +32,11 @@ export default function StarChatPage() {
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
   }, [messages])
+
+  // 自动聚焦：进入页面与每轮回复结束后，输入框直接可打字（F5/F6：输入框是我的自由）
+  useEffect(() => {
+    if (!busy) inputRef.current?.focus()
+  }, [busy, messages.length])
 
   async function fetchSuggestions() {
     setSBusy(true)
@@ -81,7 +86,13 @@ export default function StarChatPage() {
   }, [])
 
   async function send(text, opts = {}) {
-    if (!text || !text.trim() || busy) return
+    if (!text || !text.trim()) return
+    if (busy) {
+      // 思考中照常输入，发送自动排队（F5：输入框是我的自由）
+      pendingRef.current = text.trim()
+      showToast('小星正在想，你这句话先排着，马上发出')
+      return
+    }
     const useGuide = opts.guide ?? guideRef.current
     if (opts.guide) setGuide(true)
     setMessages((m) => [...m, { role: 'user', content: text.trim() }])
@@ -110,6 +121,12 @@ export default function StarChatPage() {
       showToast('小星走神了，再试一次')
     }
     setBusy(false)
+    // 发出排队中的下一条
+    if (pendingRef.current) {
+      const p = pendingRef.current
+      pendingRef.current = ''
+      send(p, opts)
+    }
   }
 
   async function askSummarize() {
@@ -123,22 +140,15 @@ export default function StarChatPage() {
     showToast('已退出记录引导，想聊什么都可以')
   }
 
-  // 梳理卡一键存进日记（不在聊天里编辑——想改去日记页改，日记本身就是编辑器）
+  // 梳理小结一键存进日记：追加模式，绝不覆盖今天已写的内容（F3）
   async function saveDraftToDiary() {
     const draft = draftRef.current
     if (!draft || draftSaved) return
-    const emotions = [...new Set((draft.moments || []).map((m) => m.emotion).filter((e) => EMOTION_SET.has(e)))]
-    const lines = [
-      draft.summary || '',
-      '',
-      ...(draft.moments || []).map((m) => `- ${m.event || ''}${m.thought ? `（当时想：${m.thought}）` : ''}${m.emotion ? `（${m.emotion}）` : ''}`),
-    ]
-    if (draft.signals) lines.push('', `身体信号：${draft.signals}`)
-    if (draft.unsaid) lines.push('', `没说出的话：${draft.unsaid}`)
-    if (draft.tomorrow) lines.push('', `明天最在意：${draft.tomorrow}`)
+    const lines = [draft.summary || '']
+    if (draft.changeOne) lines.push('', `今天最想改变的一件事：${draft.changeOne}`)
     const content = lines.filter((l) => l.trim()).join('\n').trim()
     if (!content) {
-      showToast('梳理卡还是空的，再聊两句吧')
+      showToast('梳理还是空的，再聊两句吧')
       return
     }
     setBusy(true)
@@ -146,13 +156,13 @@ export default function StarChatPage() {
       const r = await fetch('/api/diary', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content, mood: emotions }),
+        body: JSON.stringify({ content, mood: [], append: true }),
       })
       const d = await r.json()
       if (d.ok) {
         setDraftSaved(true)
         setGuide(false)
-        showToast('已存进日记 📖 去日记页看看 →')
+        showToast('已追加进今天的日记 📖 去日记页看看 →')
       } else {
         showToast(d.error || '保存失败')
       }
@@ -286,10 +296,13 @@ export default function StarChatPage() {
 
           {busy && <div className="bubble ai">…</div>}
 
-          {/* 梳理卡提示：只给"存进日记"一个动作，编辑在日记页完成 */}
+          {/* 梳理小结提示：小结已在对话里可见（F4），这里只给"存进日记"一个动作 */}
           {hasDraft && (
             <div className="draft-chip">
-              <span>✨ 今天聊的这些，小星帮你理好了</span>
+              <span className="muted" style={{ fontSize: 12 }}>
+                ✨ 小星帮你理好了{(draftRef.current?.summary || '').slice(0, 48)}{(draftRef.current?.summary || '').length > 48 ? '…' : ''}
+              </span>
+              <span style={{ flex: 1 }} />
               {draftSaved ? (
                 <Link href="/diary" className="login-skip">已存进日记，去改改 →</Link>
               ) : (
@@ -340,13 +353,13 @@ export default function StarChatPage() {
             {micOn ? '⏹' : '🎤'}
           </button>
           <input
+            ref={inputRef}
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder={quiz ? '点击上面的选项作答' : guide ? '慢慢说，我听着…' : '和小星说点什么…'}
-            disabled={busy}
           />
-          <button className="btn btn-primary" disabled={busy || !input.trim()}>发送</button>
+          <button className="btn btn-primary" disabled={!input.trim()}>发送</button>
         </form>
       </div>
 

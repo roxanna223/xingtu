@@ -3,36 +3,6 @@
 import { useState } from 'react'
 import DateWheel from '@/components/DateWheel'
 
-// 客户端星座预览（与 lib/cohort.js 同表）
-const SIGN_TABLE = [
-  { name: '摩羯', symbol: '♑', from: [12, 22], to: [1, 19] },
-  { name: '水瓶', symbol: '♒', from: [1, 20], to: [2, 18] },
-  { name: '双鱼', symbol: '♓', from: [2, 19], to: [3, 20] },
-  { name: '白羊', symbol: '♈', from: [3, 21], to: [4, 19] },
-  { name: '金牛', symbol: '♉', from: [4, 20], to: [5, 20] },
-  { name: '双子', symbol: '♊', from: [5, 21], to: [6, 21] },
-  { name: '巨蟹', symbol: '♋', from: [6, 22], to: [7, 22] },
-  { name: '狮子', symbol: '♌', from: [7, 23], to: [8, 22] },
-  { name: '处女', symbol: '♍', from: [8, 23], to: [9, 22] },
-  { name: '天秤', symbol: '♎', from: [9, 23], to: [10, 23] },
-  { name: '天蝎', symbol: '♏', from: [10, 24], to: [11, 22] },
-  { name: '射手', symbol: '♐', from: [11, 23], to: [12, 21] },
-]
-
-function signOf(birthDate) {
-  const m = String(birthDate || '').match(/(\d{1,2})-(\d{1,2})$/)
-  if (!m) return null
-  const month = Number(m[1])
-  const day = Number(m[2])
-  const inRange = (s) => {
-    if (s.from[0] === 12 && s.to[0] === 1) {
-      return (month === 12 && day >= s.from[1]) || (month === 1 && day <= s.to[1])
-    }
-    return (month === s.from[0] && day >= s.from[1]) || (month === s.to[0] && day <= s.to[1])
-  }
-  return SIGN_TABLE.find(inRange) || null
-}
-
 export default function LoginPage() {
   const [mode, setMode] = useState('register')
   const [username, setUsername] = useState('')
@@ -42,8 +12,6 @@ export default function LoginPage() {
   const [wheelOpen, setWheelOpen] = useState(true)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
-
-  const sign = signOf(birthDate)
 
   async function submit(e) {
     e.preventDefault()
@@ -103,7 +71,7 @@ export default function LoginPage() {
             {mode === 'register' && (
               <div className="field">
                 <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
-                  <label style={{ marginBottom: 0 }}>出生日期 · 决定星座起点（选填）</label>
+                  <label style={{ marginBottom: 0 }}>出生日期（选填）</label>
                   {wheelOpen ? (
                     <button type="button" className="login-skip" onClick={() => { setWheelOpen(false); setBirthDate('') }}>
                       先不填，从星海某处开始
@@ -118,19 +86,9 @@ export default function LoginPage() {
                 {wheelOpen && (
                   <div className="wheel-panel">
                     <DateWheel onPick={setBirthDate} />
-                    {sign ? (
-                      <div className="sign-preview">
-                        <span className="sign-preview-symbol">{sign.symbol}</span>
-                        <div>
-                          <div style={{ color: 'var(--yellow)', fontWeight: 800, letterSpacing: 2 }}>{sign.name}座</div>
-                          <div className="muted" style={{ fontSize: 11 }}>你的星图将从这里开始</div>
-                        </div>
-                      </div>
-                    ) : (
-                      <p className="muted" style={{ margin: '10px 0 0', fontSize: 11, textAlign: 'center' }}>
-                        上下滑动选择年月日，你的星座会自动出现
-                      </p>
-                    )}
+                    <p className="muted" style={{ margin: '10px 0 0', fontSize: 11, textAlign: 'center' }}>
+                      上下滑动选择年月日（选填，用于了解你的人生阶段）
+                    </p>
                   </div>
                 )}
               </div>

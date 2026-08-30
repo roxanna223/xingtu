@@ -5,7 +5,7 @@ import { allQuizzes, saveCustomQuiz } from '@/lib/quizzes'
 import { routeSkill, recordSkillLog } from '@/lib/skills'
 import { createGoalFromSkill, syncGoalsWithText } from '@/lib/goals'
 import { updateBehavior } from '@/lib/behavior'
-import { buildPersonaSummary, observeSession } from '@/lib/evolution'
+import { buildPersonaSummary, observeSession, applyUserSignal } from '@/lib/evolution'
 import { requireAuth, assertSameOrigin, readJsonBody } from '@/lib/auth'
 import { trackReq } from '@/lib/track'
 import { dayKeyOfIso, nowIso } from '@/lib/day'
@@ -158,6 +158,19 @@ export async function POST(req) {
   // 用规则版补一张"今日能量提示"卡（体验不依赖单次 LLM 的输出稳定性）
   if (!out.quiz && !out.result && !out.skill && /能量|运势|状态|精力/.test(text)) {
     out = mockStar(history, quiz, summary)
+  }
+
+  // 说错话纠正（F9/F10）：用户指出小星记错/串台 → 惩罚相关记忆条目并落盘（不阻塞回复）
+  if (text && !isControlMessage(text) && /你说错|你记错|记错了|记忆错乱|说岔了|又乱说|串台/.test(text)) {
+    try {
+      await withStoreLock(async () => {
+        const fp = readProfile(userId)
+        fp.personaMeta = applyUserSignal(fp.personaMeta || [], { signal: 'correct', keywords: [text.slice(0, 40)] })
+        writeProfile(userId, fp)
+      })
+    } catch (e) {
+      console.warn('[star] 纠正信号应用失败：', e.message)
+    }
   }
 
   // 本次调度实际执行的技能与来源（rule 命中同技能 → rule；其余 LLM 兜底 → llm）

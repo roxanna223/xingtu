@@ -27,12 +27,12 @@ export async function GET(req) {
     loggedIn: true,
     user: {
       username: auth.user.username,
-      starSign: auth.user.starSign || null,
-      starSymbol: auth.user.starSymbol || null,
       role: auth.user.role,
     },
     onboarded: !!(auth.user.cohort?.birthYearMonth),
     dayCount: contentDays.length,
+    // 主页"我在哪"：最近 3 天情绪轨迹（真实数据，来自画像情绪序列）
+    moodTrail: (p.emotionSeries || []).slice(-3).map((s) => ({ date: s.date, emotion: s.topEmotion || '' })),
     hasKey: !!process.env.DEEPSEEK_API_KEY,
     lastDate: contentDays.at(-1) || days.at(-1)?.date || null,
     debugAvailable: debugAllowed(auth.user),

@@ -167,21 +167,22 @@ export function readProfile(userId) {
   p.skillLog = jparse(row.skill_log, [])
   p.goals = jparse(row.goals, [])
   p.personaMeta = jparse(row.persona_meta, [])
+  p.daySummaries = jparse(row.day_summaries, {})
   return p
 }
 
 export function writeProfile(userId, p) {
   const d = getDB()
   d.prepare(
-    `INSERT INTO profiles (user_id, topics, edges, feedback_log, emotion_series, reports, period_reports, behavior, last_report, opener_idx, last_openers, adapt_log, generating, crisis_flag, adoptions, skill_log, goals, persona_meta, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `INSERT INTO profiles (user_id, topics, edges, feedback_log, emotion_series, reports, period_reports, behavior, last_report, opener_idx, last_openers, adapt_log, generating, crisis_flag, adoptions, skill_log, goals, persona_meta, day_summaries, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(user_id) DO UPDATE SET
        topics=excluded.topics, edges=excluded.edges, feedback_log=excluded.feedback_log,
        emotion_series=excluded.emotion_series, reports=excluded.reports, period_reports=excluded.period_reports,
        behavior=excluded.behavior, last_report=excluded.last_report, opener_idx=excluded.opener_idx,
        last_openers=excluded.last_openers, adapt_log=excluded.adapt_log, generating=excluded.generating,
        crisis_flag=excluded.crisis_flag, adoptions=excluded.adoptions, skill_log=excluded.skill_log,
-       goals=excluded.goals, persona_meta=excluded.persona_meta, updated_at=excluded.updated_at`
+       goals=excluded.goals, persona_meta=excluded.persona_meta, day_summaries=excluded.day_summaries, updated_at=excluded.updated_at`
   ).run(
     userId,
     jstr(p.topics ?? []),
@@ -201,6 +202,7 @@ export function writeProfile(userId, p) {
     jstr(p.skillLog ?? []),
     jstr(p.goals ?? []),
     jstr(p.personaMeta ?? []),
+    jstr(p.daySummaries ?? {}),
     now()
   )
   // 用户维度字段(engine/onboard 会改 p.user.*)同步落 users 表,避免丢失

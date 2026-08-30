@@ -502,8 +502,6 @@ export function buildProfileSummary(profile) {
   const dominant = Object.entries(domainCount).sort((a, b) => b[1] - a[1])[0]
   return {
     username: profile.user?.username || '',
-    starSign: profile.user?.starSign || null,
-    lifeTask: profile.user?.cohort?.lifeTask || '',
     careerStage: profile.user?.careerStage || '',
     dayCount: (profile.emotionSeries || []).length,
     recentEmotion: (profile.emotionSeries || []).at(-1)?.topEmotion || '',
@@ -556,42 +554,33 @@ const MOCK_GUIDE_Q = [
   '那件事发生的时候，你心里冒出来的第一句话是什么？',
   '后来呢，你是怎么处理的？',
   '除了那件事，今天还有没有什么小事值得记一笔？',
+  '如果今天重来一次，你会改掉哪一刻？',
+  '明天你最在意的一件事是什么？',
 ]
 
 export function mockStarGuide(history = [], draft = null) {
-  // 控制消息（帮我梳理/选项作答）不进入梳理卡内容
+  // 控制消息（帮我梳理/选项作答）不进入梳理内容
   const realTurns = (history || []).filter((m) => m.role === 'user' && !/^\[|^我选：/.test(String(m.content || '')))
   const lastUser = (history || []).filter((m) => m.role === 'user').at(-1)?.content || ''
-  const wantDraft = lastUser.includes('[帮我梳理今天]') || /帮我梳理|帮我总结|就这些|大概这样|说完了|好了$/.test(lastUser)
-  const userTurns = realTurns
+  const wantDone = /就这些|大概这样|说完了|好了$|可以了|梳理吧/.test(lastUser)
 
-  if (draft) {
-    if (wantDraft) return { reply: '好，我按你说的调好了。你再看一眼，想改就直接说。', draft, done: true }
-    return { reply: MOCK_GUIDE_Q[userTurns.length % MOCK_GUIDE_Q.length], draft, done: false }
+  // 聊过内容 + 用户收束 → 对话内可见的小结 + 可存日记的 draft（存=追加，不覆盖）
+  if (realTurns.length > 0 && wantDone) {
+    const joined = realTurns.map((u) => u.content).join('；')
+    const summary = joined.slice(0, 120)
+    const m = joined.match(/想(?:要|着)?(?:改|改变|变好|改掉)[^；。，]{0,20}/)
+    const changeOne = m ? m[0].slice(0, 40) : ''
+    const reply = `好，帮你把今天拢一下：${summary}${changeOne ? `。今天最想改变的一件事，我记下了：${changeOne}` : ''}。想留档的话，点下面的「存进日记」，我会追加到你今天的日记里。`
+    return { reply, draft: { summary, changeOne }, done: true }
   }
 
-  if (userTurns.length === 0) {
-    return wantDraft
-      ? { reply: '还没聊到具体的事——先随便说两句今天的事，我再帮你理成卡片。', draft: null, done: false }
-      : { reply: '我在。想从哪说起，我就陪到哪。', draft: null, done: false }
+  // 还没有实质内容 → 先邀请开口（F1：是你来引导我去梳理）
+  if (realTurns.length === 0) {
+    return { reply: '好，我们来把今天聊出来。先从一件小事开始——今天最普通的一个瞬间，是什么？', draft: null, done: false }
   }
 
-  if (wantDraft) {
-    const em = topEmotion(userTurns.map((u) => u.content).join('\n'))
-    return {
-      reply: '好，我把今天理成一张卡片，你可以直接改，改完点"存进日记"。',
-      draft: {
-        summary: userTurns.map((u) => u.content).join('；').slice(0, 60),
-        moments: userTurns.slice(0, 3).map((u) => ({ event: u.content.slice(0, 24), thought: '', emotion: em })),
-        signals: '',
-        unsaid: '',
-        tomorrow: '',
-      },
-      done: true,
-    }
-  }
-
-  return { reply: MOCK_GUIDE_Q[userTurns.length % MOCK_GUIDE_Q.length], draft: null, done: false }
+  // 引导轮：针对他刚说的内容，轻问一个跟进问题
+  return { reply: MOCK_GUIDE_Q[realTurns.length % MOCK_GUIDE_Q.length], draft: null, done: false }
 }
 
 export function mockStar(history = [], quiz = null, summary = {}) {
@@ -602,6 +591,11 @@ export function mockStar(history = [], quiz = null, summary = {}) {
   if (!quiz) {
     const hit = routeSkill(lastUser)
     if (hit?.skill?.id === 'goalBreak') return mockGoalBreak(lastUser, summary)
+  }
+
+  // 说错话纠正（F9/F10）：用户指出记忆/串台问题 → 立刻承认并请他说清（服务端同步惩罚相关条目）
+  if (/你说错|你记错|记错了|记忆错乱|说岔|又乱说|串台/.test(lastUser)) {
+    return { reply: '抱歉，我刚才记岔了。你再说一遍，我记准。', quiz: null, result: null, skill: null }
   }
 
   // 测验意图识别（题库没有的主题现场生成并沉淀进 custom-quizzes.json）
@@ -660,13 +654,9 @@ export function mockStar(history = [], quiz = null, summary = {}) {
     return { reply: '测完啦，这是你的结果：', quiz: null, result: { quizId: quiz.id, ...r } }
   }
 
-  // 普通闲聊（Mock 兜底）：像朋友一样承接，不催任务、不把话题拉向别处
-  const topic = summary.topTopics?.[0]
-  const base = topic
-    ? `嗯，我在听。你说到「${topic}」的事，慢慢说。`
-    : '嗯，我在听，你慢慢说。'
+  // 普通闲聊（Mock 兜底）：四拍——接住→照见；绝不引用画像话题（防串台，F8）
   return {
-    reply: base,
+    reply: '嗯，我在听。后来呢？',
     quiz: null,
     result: null,
   }
@@ -685,6 +675,7 @@ export function goalTarget(text) {
 /** 目标拆解 Mock（无 Key 兜底）：三步通用框架，不编造具体领域建议 */
 export function mockGoalBreak(text = '', summary = {}) {
   const target = goalTarget(text)
+  const period = /年|长期|三个月|半年|季度/.test(target) ? 'monthly' : /周|一周|7天|七天/.test(target) ? 'weekly' : 'daily'
   return {
     reply: `好，我们先把「${target}」拆成三步，每步带一个小指标，你按自己的节奏来。`,
     quiz: null,
@@ -694,6 +685,7 @@ export function mockGoalBreak(text = '', summary = {}) {
       title: '目标拆解',
       goal: target,
       summary: `把「${target}」变成可以走的三步`,
+      period,
       steps: [
         { step: `把「${target}」写成一句话，并写下现在的状态与想要的差距`, metric: '写 1 条目标陈述 + 1 条现状记录', type: 'journal', options: ['写好了', '写了大概', '还没写'] },
         { step: '今天完成一个 10 分钟的最小行动（只要动起来就算数）', metric: '完成 1 次并当天记录', type: 'checkin', options: [] },
@@ -911,4 +903,25 @@ export function mockExtract(record) {
     })
   }
   return { topics, crisis }
+}
+
+/* ---------------- 今日小结（R6：日记保存后立即生成轻量小结，不等次日 6:00 日报） ---------------- */
+
+export async function generateDaySummary(profile, dayText) {
+  const text = String(dayText || '').trim().slice(0, 1500)
+  if (!text) return { text: '', generatedAt: null }
+  if (process.env.DEEPSEEK_API_KEY) {
+    try {
+      const sys = '你是「星图」产品。用用户视角把今天写成 1~2 句小结（≤60字）：只重述今天发生了什么/处于什么状态，不评价、不归因、不加因果、不贴情绪标签。只输出小结文本本身。'
+      const raw = await callLLM([
+        { role: 'system', content: sys },
+        { role: 'user', content: `今天的内容：\n${text}` },
+      ])
+      const t = String(raw || '').trim().slice(0, 120)
+      if (t) return { text: t, generatedAt: new Date().toISOString() }
+    } catch (e) {
+      console.warn('[engine] 今日小结生成失败，降级规则：', e.message)
+    }
+  }
+  return { text: text.split(/[。\n]/)[0].slice(0, 60), generatedAt: new Date().toISOString() }
 }

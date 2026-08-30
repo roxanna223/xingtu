@@ -8,18 +8,16 @@ import {
   goalsSummaryForPrompt,
   stepRecord,
   stepNote,
-  completeBonus,
-  ensureDailyBonus,
   normalizeGoals,
+  todayStepFor,
 } from '@/lib/goals'
 import { requireAuth, assertSameOrigin, readJsonBody } from '@/lib/auth'
 import { trackReq } from '@/lib/track'
 
-// 目标系统 v2（计划栏目 + 每日打卡/记录 + 积分激励）：
-// GET  返回目标列表（含今日彩蛋任务，过期懒生成）+ 活跃目标摘要
+// 目标系统 v2（计划栏目 + 每日打卡/记录）：
+// GET  返回目标列表 + 活跃目标摘要
 // POST {action:'create', text}                       手动创建：goalBreak 拆解 + 自动落计划栏目
 //      {action:'stepRecord', goalId, stepIndex, text} 每日打卡/记录（journal 需内容，checkin 可一键）
-//      {action:'bonusDone', goalId}                   完成今日彩蛋任务（+积分）
 //      {action:'toggleStep', goalId, stepIndex, done} 手动完成/重开步骤
 //      {action:'archive'|'delete', goalId}            归档/删除
 export async function GET(req) {
@@ -29,15 +27,7 @@ export async function GET(req) {
   try {
     const data = await withStoreLock(async () => {
       const p = normalizeGoals(readProfile(userId))
-      // 彩蛋任务懒生成：跨天过期则为每个活跃目标补今天的（LLM 生成 + Mock 兜底，一天一次）
-      const active = (p.goals || []).filter((g) => g.status === 'active')
-      if (active.length) {
-        for (const g of active) {
-          await ensureDailyBonus(p, g)
-        }
-        writeProfile(userId, p)
-      }
-      return { goals: p.goals || [], summary: goalsSummaryForPrompt(p) }
+      return { goals: p.goals || [], summary: goalsSummaryForPrompt(p), todayStep: todayStepFor(p) }
     })
     return Response.json(data)
   } catch (e) {
@@ -76,7 +66,6 @@ export async function POST(req) {
       let r
       if (action === 'stepRecord') r = await stepRecord(p, { goalId, stepIndex: Number(stepIndex), subIndex: subIndex == null ? null : Number(subIndex), text })
       else if (action === 'stepNote') r = stepNote(p, { goalId, stepIndex: Number(stepIndex), text })
-      else if (action === 'bonusDone') r = completeBonus(p, { goalId })
       else if (action === 'toggleStep') r = toggleGoalStep(p, { goalId, stepIndex: Number(stepIndex), done: !!done })
       else if (action === 'archive') r = archiveGoal(p, goalId)
       else if (action === 'delete') r = deleteGoal(p, goalId)

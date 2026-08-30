@@ -38,10 +38,7 @@ export default function ReportPage() {
         setReport(data)
         setAdoption(data.adoption || null)
         setPhase('ready')
-        // 报告正在后台生成：4 秒后自动重试
-        if (data.generating) {
-          setTimeout(() => load(t, d, r), 4000)
-        }
+        // 旧版"生成中"轮询已废弃：今天的日报等到明天 6:00（pending），无需轮询
       })
       .catch(() => setPhase('error'))
   }
@@ -216,13 +213,19 @@ export default function ReportPage() {
         </div>
       )}
 
-      {phase === 'ready' && report?.generating && (
+      {phase === 'ready' && report?.pending && (
         <div className="card empty-state">
-          <div className="spinner" />
-          <p className="muted" style={{ marginTop: 14, lineHeight: 1.9 }}>
-            今天的报告正在后台生成中，稍等一下就会好。<br />
-            你可以先去逛逛星图，或看看以前的日报、周报。
-          </p>
+          <p style={{ fontSize: 14, margin: 0 }}>🌅 今天的完整日报会在<b>明天 6:00</b>生成。</p>
+          {report.todaySummary ? (
+            <div style={{ marginTop: 12, textAlign: 'left' }}>
+              <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>现在的小结（随记录即时更新）：</div>
+              <p style={{ margin: 0, lineHeight: 1.8 }}>{report.todaySummary}</p>
+            </div>
+          ) : (
+            <p className="muted" style={{ margin: '10px 0 0', fontSize: 12 }}>
+              先写几句日记或和小星聊聊，小结会马上出现。
+            </p>
+          )}
         </div>
       )}
 
@@ -233,7 +236,7 @@ export default function ReportPage() {
         </div>
       )}
 
-      {phase === 'ready' && report && !report.generating && (
+      {phase === 'ready' && report && !report.generating && !report.pending && (
         <>
           {report.dataNote && (
             <div className="card" style={{ borderColor: 'rgba(245,199,106,0.4)', padding: '12px 16px' }}>
@@ -316,8 +319,12 @@ export default function ReportPage() {
 
             {report.coordinates && (
               <div className="report-sec">
-                <h3>我的坐标 · 目标 / 自我 / 差距</h3>
+                <h3>我的坐标 · 差距 / 目标 / 自我</h3>
                 <div className="coord-grid">
+                  <div className="coord-item">
+                    <b>📏 差距</b>
+                    <p>{report.coordinates.gap || '—'}</p>
+                  </div>
                   <div className="coord-item">
                     <b>🎯 目标</b>
                     <p>{report.coordinates.goal || '—'}</p>
@@ -325,10 +332,6 @@ export default function ReportPage() {
                   <div className="coord-item">
                     <b>🪞 自我</b>
                     <p>{report.coordinates.self || '—'}</p>
-                  </div>
-                  <div className="coord-item">
-                    <b>📏 差距</b>
-                    <p>{report.coordinates.gap || '—'}</p>
                   </div>
                 </div>
               </div>

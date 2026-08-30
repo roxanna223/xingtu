@@ -1,9 +1,8 @@
 import { getDB } from '@/lib/db'
 import { readProfile, writeProfile, readDays, writeDays, readJournal, writeJournal, appendStream, readStream, withStoreLock } from '@/lib/store'
-import { extractAndMerge, generateReport } from '@/lib/engine'
+import { extractAndMerge, generateDaySummary } from '@/lib/engine'
 import { syncGoalsWithText } from '@/lib/goals'
 import { updateBehavior } from '@/lib/behavior'
-import { detectIntent, patternTopics } from '@/lib/intent'
 import { consumePendingChats } from '@/lib/chatStore'
 import { rebuildPersonaDocs } from '@/lib/evolution'
 import { formatStream } from '@/lib/stream'
@@ -63,7 +62,8 @@ export async function POST(req) {
   if (body.__error) return Response.json({ error: body.__error }, { status: 400 })
 
   const date = String(body.date || todayKey()).slice(0, 10)
-  const content = String(body.content || '').trim().slice(0, 20000)
+  const appendMode = body.append === true
+  let content = String(body.content || '').trim().slice(0, 20000)
   const mood = Array.isArray(body.mood) ? body.mood.map((m) => String(m).slice(0, 8)).filter(Boolean).slice(0, 8) : []
   if (!content && !mood.length) return Response.json({ error: '写点什么，或至少点一下今天的心情吧' }, { status: 400 })
 
@@ -72,6 +72,11 @@ export async function POST(req) {
 
   const { topicCount, dayCount } = await withStoreLock(async () => {
     const p = readProfile(userId)
+    // 追加模式（F3：小星梳理结论追加进日记，绝不覆盖已写内容）
+    if (appendMode) {
+      const existing = readJournal(userId, date)?.content || ''
+      if (existing.trim()) content = existing.trimEnd() + '\n\n【小星梳理】\n' + content
+    }
     // 日记全文走与记录相同的抽取管线（主题/情绪/关联入画像），q2 由情绪点选生成
     const record = { date, freeText: content, q1: firstLine.slice(0, 80), q2: moodText, q3: '' }
     if (content) {
@@ -88,6 +93,8 @@ export async function POST(req) {
     writeProfile(userId, p)
 
     // 日记事实源（journals）+ 旧 days 镜像（周期报告/历史清单兼容）
+    // F17：修改有反馈——覆盖已有内容时写"更新日记"事件，次日日报会看见
+    const existedBefore = readJournal(userId, date)
     writeJournal(userId, date, content, mood)
     const days = readDays(userId)
     const i = days.findIndex((d) => d.date === date)
@@ -98,36 +105,37 @@ export async function POST(req) {
 
     // 人生事件流（日记段落事件）
     appendStream(userId, { day: dayKeyOfIso(nowIso()), kind: 'diary_entry', data: { text: content.slice(0, 2000), mood } })
+    if ((existedBefore?.content || '').trim() && appendMode) {
+      appendStream(userId, { day: dayKeyOfIso(nowIso()), kind: 'diary_edit', data: { text: '追加了梳理内容' } })
+    } else if ((existedBefore?.content || '').trim() !== content) {
+      appendStream(userId, { day: dayKeyOfIso(nowIso()), kind: 'diary_edit', data: { text: '更新了日记内容' } })
+    }
 
     return { topicCount: p.topics.length, dayCount: days.length }
   })
 
-  // 后台：① 未抽取对话并入画像 → ② 生成当日日报 → ③ 目标同步 → ④ 进化资产文档重建（同一条串行链 + 写锁）
+  // 后台：① 未抽取对话并入画像 → ② 生成"今天小结"（轻量，不进报告缓存；完整日报留给次日 6:00）→ ③ 目标同步 → ④ 进化资产文档重建（同一条串行链 + 写锁）
   ;(async () => {
     try {
       await withStoreLock(async () => {
         await consumePendingChats(userId)
         const latest = readProfile(userId)
         const lastD = readDays(userId).at(-1)
-        const track = lastD?.q2 || ''
-        const intent = detectIntent(`${lastD?.freeText || ''} ${lastD?.q1 || ''} ${lastD?.q3 || ''}`)
-        const patterns = patternTopics(latest)
         const streamText = formatStream(readStream(userId, lastD?.date || date))
-        const rep = await generateReport(latest, null, track, lastD || null, intent, patterns, streamText)
-        const fresh = readProfile(userId)
-        fresh.lastReport = rep
-        fresh.reports = fresh.reports || {}
-        if (lastD) {
-          rep.dayKey = lastD.date
-          fresh.reports[lastD.date] = { ...rep, trackText: track }
+        const dayText = `${lastD?.freeText || ''}\n${streamText}`.trim()
+        // R6：即时小结（日记保存后立刻可见，不等次日 6:00）
+        const summary = await generateDaySummary(latest, dayText)
+        if (summary.text) {
+          latest.daySummaries = latest.daySummaries || {}
+          latest.daySummaries[lastD?.date || date] = summary
         }
-        const dayText = `${lastD?.freeText || ''} ${lastD?.q1 || ''} ${lastD?.q3 || ''}`.trim()
-        if (dayText && (fresh.goals || []).some((g) => g.status === 'active')) {
-          await syncGoalsWithText(fresh, dayText, 'record')
+        const goalText = `${lastD?.freeText || ''} ${lastD?.q1 || ''} ${lastD?.q3 || ''}`.trim()
+        if (goalText && (latest.goals || []).some((g) => g.status === 'active')) {
+          await syncGoalsWithText(latest, goalText, 'record')
         }
-        rebuildPersonaDocs(userId, fresh)
-        fresh.generating = false
-        writeProfile(userId, fresh)
+        rebuildPersonaDocs(userId, latest)
+        latest.generating = false
+        writeProfile(userId, latest)
       })
     } catch (e) {
       await withStoreLock(() => {
@@ -135,7 +143,7 @@ export async function POST(req) {
         fresh.generating = false
         writeProfile(userId, fresh)
       })
-      console.warn('[diary] 后台生成日报失败：', e.message)
+      console.warn('[diary] 后台小结生成失败：', e.message)
     }
   })()
 

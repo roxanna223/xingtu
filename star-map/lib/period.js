@@ -105,6 +105,7 @@ export function aggregateRange(profile, days, range, nowStr) {
     start,
     end,
     dayCount: inDays.length,
+    inDays: inDays.length,
     totalDays,
     dataNote,
     emotionDist,

@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import NavBar from '@/components/NavBar'
-import StarMap3D from '@/components/StarMap3D'
 
 const DOMAINS = ['事业', '关系', '自我', '健康', '财务', '成长']
 const W = 1000
@@ -12,8 +11,6 @@ const CX = 500
 const CY = 350
 const ZONE_R = 222
 const ZONE_SIZE = 95
-const ZODIAC_R = 322
-const ZODIAC = ['白羊♈', '金牛♉', '双子♊', '巨蟹♋', '狮子♌', '处女♍', '天秤♎', '天蝎♏', '射手♐', '摩羯♑', '水瓶♒', '双鱼♓']
 
 function hash(s) {
   let h = 0
@@ -46,8 +43,6 @@ export default function StarMapPage() {
   const [data, setData] = useState(null)
   const [selected, setSelected] = useState(null)
   const [showLegend, setShowLegend] = useState(true)
-  const [view3d, setView3d] = useState(false)
-  const [dim3d, setDim3d] = useState({ width: 680, height: 460 })
   const wrapRef = useRef(null)
   const [asOf, setAsOf] = useState('')
   const [splitQuoteQ, setSplitQuoteQ] = useState(null)
@@ -196,14 +191,6 @@ export default function StarMapPage() {
       )}
 
       <div className="star-wrap" ref={wrapRef}>
-        {view3d ? (
-          <StarMap3D
-            graphData={{ nodes: data.nodes || [], links: data.edges || [] }}
-            onNodeClick={setSelected}
-            width={dim3d.width}
-            height={dim3d.height}
-          />
-        ) : (
           <svg className="star-svg" viewBox={`0 0 ${W} ${H}`} shapeRendering="crispEdges">
           <rect width={W} height={H} fill="#0e1130" />
 
@@ -237,45 +224,13 @@ export default function StarMapPage() {
             )
           })}
 
-          {/* 黄道星座环：用户的星座是星图起点 */}
-          <circle cx={CX} cy={CY} r={ZODIAC_R} fill="none" stroke="#4a5088" strokeWidth="2" strokeDasharray="2 8" />
-          {ZODIAC.map((s, i) => {
-            const a = ((i * 30 - 90) * Math.PI) / 180
-            const x = CX + ZODIAC_R * Math.cos(a)
-            const y = CY + ZODIAC_R * Math.sin(a)
-            const isMine = data.user?.starSymbol && s.includes(data.user.starSymbol)
-            return (
-              <g key={s}>
-                {isMine && <rect x={x - 22} y={y - 22} width={44} height={44} fill="none" stroke="#ffd34d" strokeWidth={2.5} />}
-                {isMine && (
-                  <path d={`M ${CX} ${CY} H ${x} V ${y}`} fill="none" stroke="#ffd34d" strokeWidth={2} strokeDasharray="4 6" opacity={0.4} />
-                )}
-                <text
-                  x={x}
-                  y={y}
-                  textAnchor="middle"
-                  dominantBaseline="central"
-                  fontSize={isMine ? 26 : 17}
-                  fill={isMine ? '#ffd34d' : '#4a5088'}
-                >
-                  {s.replace(/[♈♉♊♋♌♍♎♏♐♑♒♓]/, '') === s ? s : s.slice(2)}
-                </text>
-                {isMine && (
-                  <text x={x} y={y - 32} textAnchor="middle" fontSize={11} fill="#ffd34d" fontWeight="bold" letterSpacing="2">
-                    起点
-                  </text>
-                )}
-              </g>
-            )
-          })}
-
           {/* 中心：你 */}
           <rect x={CX - 26} y={CY - 26} width={52} height={52} fill="none" stroke="#ffd34d" strokeWidth={2.5} opacity={0.55} />
           <text x={CX} y={CY} textAnchor="middle" dominantBaseline="central" fontSize={22} fill="#ffd34d">
-            {data.user?.starSymbol || '✦'}
+            ✦
           </text>
           <text x={CX} y={CY + 46} textAnchor="middle" fontSize={12} fill="#9aa0d0" letterSpacing="2">
-            {data.user?.starSign ? `你 · ${data.user.starSign}座` : '你在星海某处'}
+            你在星海某处
           </text>
 
           {/* 主题连线：90° 像素折线 */}
@@ -307,11 +262,9 @@ export default function StarMapPage() {
             )
           })}
         </svg>
-        )}
 
         <div className="star-toolbar">
           <button className="btn btn-ghost" onClick={() => setShowLegend((v) => !v)}>图例</button>
-          <button className="btn btn-ghost" onClick={() => setView3d((v) => !v)}>{view3d ? '2D 像素视图' : '3D 引力视图'}</button>
           <Link className="btn btn-primary" href="/report">查看状态报告 →</Link>
         </div>
 

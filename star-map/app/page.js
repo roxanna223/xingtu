@@ -3,24 +3,23 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import NavBar from '@/components/NavBar'
+import { EMO_COLORS } from '@/lib/colors'
 
 export default function HomePage() {
   const [status, setStatus] = useState(null)
+  const [goalsData, setGoalsData] = useState(null)
 
   useEffect(() => {
     fetch('/api/status').then((r) => r.json()).then(setStatus)
+    fetch('/api/goals').then((r) => r.json()).then(setGoalsData)
   }, [])
 
   const hour = new Date().getHours()
-  const greet = hour < 6 ? '夜深了' : hour < 12 ? '早上好' : hour < 18 ? '下午好' : '晚上好'
   const greetEn = hour < 6 ? 'LATE NIGHT' : hour < 12 ? 'GOOD MORNING' : hour < 18 ? 'GOOD AFTERNOON' : 'GOOD EVENING'
   const user = status?.user
   const days = status?.dayCount ?? 0
-
-  // 状态条：由记录天数派生的展示值（纯视觉）
-  const hp = Math.min(96, 52 + days * 2)
-  const mp = Math.min(96, 46 + days * 3)
-  const xp = Math.min(96, 20 + days * 6)
+  const moodTrail = status?.moodTrail || []
+  const todayStep = goalsData?.todayStep || null
 
   return (
     <div className="page">
@@ -31,21 +30,12 @@ export default function HomePage() {
         <div>
           <div className="px" style={{ fontSize: 8, color: 'var(--dim)' }}>{greetEn}</div>
           <div style={{ fontWeight: 800, fontSize: 17, marginTop: 5, letterSpacing: 1 }}>
-            {user?.username || '…'}{' '}
-            <span className="tag" style={{ borderColor: 'var(--yellow)', color: 'var(--yellow)' }}>
-              {user?.starSymbol ? `${user.starSymbol} ${user.starSign || ''}` : '✦ 星海某处'}
-            </span>
+            {user?.username || '…'}
           </div>
         </div>
         <span className="px" style={{ marginLeft: 'auto', fontSize: 9, color: 'var(--dim)' }}>
           DAY {days}
         </span>
-      </div>
-
-      <div className="card px-stats">
-        <div className="px-stat"><span className="ic">❤️</span><span className="lb">心力</span><div className="bar bar-hp"><i style={{ width: `${hp}%` }} /></div><span className="vl">{hp}/100</span></div>
-        <div className="px-stat"><span className="ic">🔮</span><span className="lb">能量</span><div className="bar bar-mp"><i style={{ width: `${mp}%` }} /></div><span className="vl">{mp}/100</span></div>
-        <div className="px-stat"><span className="ic">⭐</span><span className="lb">星光</span><div className="bar bar-xp"><i style={{ width: `${xp}%` }} /></div><span className="vl">{days} 天</span></div>
       </div>
 
       {/* P0-1 首次使用引导：还没记录过 → 三步新手指引 */}
@@ -73,15 +63,57 @@ export default function HomePage() {
       )}
 
       <div className="card home-hero">
-        <div className="px" style={{ fontSize: 8, color: 'var(--yellow)' }}>TONIGHT BRIEF</div>
-        <h2>
-          {greet}，{user?.username || '旅人'}。<br />
-          今晚也<b>留一盏灯</b>给自己。
-        </h2>
-        <p>
-          星图已经陪你走过 {days} 天。说几句也好，只看不记也好——它不催你。
-          {!status?.hasKey && <span className="muted">（当前 Mock 引擎，配置 API Key 后切换在线引擎）</span>}
-        </p>
+        <div className="px" style={{ fontSize: 8, color: 'var(--green)' }}>TODAY'S STEP · 今天的一步</div>
+
+        {/* 我在哪：最近情绪轨迹（真实数据） */}
+        <div className="row" style={{ marginTop: 10, flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
+          <span className="muted" style={{ fontSize: 12 }}>我在哪 · 最近：</span>
+          {moodTrail.length > 0 ? (
+            moodTrail.map((m, i) => (
+              <span key={i} className="chip on" style={{ fontSize: 12, borderColor: EMO_COLORS[m.emotion] || 'var(--dim)', color: EMO_COLORS[m.emotion] || 'var(--dim)' }}>
+                {m.date.slice(5)} {m.emotion}
+              </span>
+            ))
+          ) : (
+            <span className="muted" style={{ fontSize: 12 }}>还没有记录</span>
+          )}
+        </div>
+
+        {/* 差什么 + 走了吗：进行中目标的最小一步（真实数据） */}
+        {todayStep ? (
+          <>
+            <h2 style={{ margin: '12px 0 6px', fontSize: 16 }}>「{todayStep.goalTitle}」差这一步</h2>
+            <p style={{ fontSize: 14, margin: 0, lineHeight: 1.8 }}>
+              {todayStep.step}
+              <span className="muted">（{todayStep.metric}）</span>
+            </p>
+            <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center', marginTop: 10 }}>
+              <span style={{ fontSize: 12, color: todayStep.doneToday ? 'var(--green)' : 'var(--yellow)' }}>
+                {todayStep.doneToday
+                  ? '✓ 今天的这一步已经走了'
+                  : todayStep.idleDays >= 3
+                    ? `⏳ 今天这一步还没走 · 目标 ${todayStep.idleDays} 天没更新了`
+                    : '⏳ 今天这一步还没走'}
+              </span>
+              <Link className="btn btn-primary btn-sm" href="/goals">
+                {todayStep.doneToday ? '看看进度' : '去走这一步'}
+              </Link>
+            </div>
+          </>
+        ) : (
+          <>
+            <h2 style={{ margin: '12px 0 6px', fontSize: 16 }}>差一步：先说出你想成为的样子</h2>
+            <p className="muted" style={{ fontSize: 13, margin: 0, lineHeight: 1.8 }}>
+              {days === 0
+                ? '今天先写一句话，让星图看见你。'
+                : '定一个目标，星图把它拆成一步步，你每天打开就能看见"今天差哪一步"。'}
+            </p>
+            <div className="row" style={{ gap: 8, marginTop: 10 }}>
+              <Link className="btn btn-primary btn-sm" href="/goals">🎯 定目标</Link>
+              <Link className="btn btn-ghost" href="/diary">写一句今天</Link>
+            </div>
+          </>
+        )}
       </div>
 
       <div className="home-cards">

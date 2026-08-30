@@ -94,7 +94,6 @@ export default function SettingsPage() {
         {info?.user && (
           <div className="kv-list">
             <div className="kv"><span>昵称</span><b>{info.user.username}</b></div>
-            <div className="kv"><span>星座</span><b>{info.user.starSign ? `${info.user.starSymbol} ${info.user.starSign}` : '未设置'}</b></div>
             <div className="kv"><span>角色</span><b>{info.user.role === 'admin' ? '管理员' : '星图旅人'}</b></div>
             <div className="kv"><span>加入时间</span><b>{(info.user.createdAt || '').slice(0, 10)}</b></div>
             <div className="kv"><span>记录天数</span><b>{info.dayCount} 天</b></div>

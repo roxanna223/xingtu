@@ -85,7 +85,7 @@ export async function POST(req) {
       trackEvent(userId, 'register', '/api/auth', { inviteUsed: !!code })
       const token = createSessionToken(name)
       return new Response(
-        JSON.stringify({ ok: true, user: { username: name, starSign: sign ? sign.name : null, starSymbol: sign ? sign.symbol : null } }),
+        JSON.stringify({ ok: true, user: { username: name } }),
         { status: 200, headers: { 'Content-Type': 'application/json', 'Set-Cookie': serializeSessionCookie(token, reqIsHttps(req)) } }
       )
     } catch (e) {
@@ -119,7 +119,7 @@ export async function POST(req) {
   return new Response(
     JSON.stringify({
       ok: true,
-      user: { username: name, starSign: user.starSign || null, starSymbol: user.starSymbol || null },
+      user: { username: name },
     }),
     { status: 200, headers: { 'Content-Type': 'application/json', 'Set-Cookie': serializeSessionCookie(token, reqIsHttps(req)) } }
   )

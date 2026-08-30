@@ -257,6 +257,21 @@ function migrate(d) {
       throw e
     }
   }
+  if (v < 9) {
+    // v9:即时小结(T5 R6):日记保存后生成的"今天小结"按日缓存,不等次日 6:00 日报
+    d.exec('BEGIN')
+    try {
+      const cols = d.prepare('PRAGMA table_info(profiles)').all()
+      if (!cols.some((c) => c.name === 'day_summaries')) {
+        d.exec("ALTER TABLE profiles ADD COLUMN day_summaries TEXT NOT NULL DEFAULT '{}'")
+      }
+      d.exec('PRAGMA user_version = 9')
+      d.exec('COMMIT')
+    } catch (e) {
+      d.exec('ROLLBACK')
+      throw e
+    }
+  }
 }
 
 export function closeDB() {

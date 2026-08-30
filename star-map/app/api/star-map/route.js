@@ -79,8 +79,6 @@ export async function GET(req) {
     dayCount: (p.emotionSeries || []).length,
     dates,
     asOf: asOf || null,
-    user: p.user?.username
-      ? { username: p.user.username, starSign: p.user.starSign || null, starSymbol: p.user.starSymbol || null }
-      : null,
+    user: p.user?.username ? { username: p.user.username } : null,
   })
 }

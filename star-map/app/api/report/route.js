@@ -45,6 +45,18 @@ export async function GET(req) {
           return Response.json({ ...cached, range, periodLabel: period.periodLabel, adoption })
         }
         const agg = aggregateRange(p, days, range, todayStr)
+        // F18：周期诚实——记录天数不足 2 天时不生成结论（不拿 1 天数据下总结）
+        if ((agg.inDays || 0) < 2) {
+          return Response.json({
+            minimal: true,
+            range,
+            periodLabel: period.periodLabel,
+            playback: `这个周期只记录了 ${agg.inDays} 天，还不足以做总结。继续记录，数据够了再回来看。`,
+            trends: [],
+            observations: [],
+            dates,
+          })
+        }
         // P0 采纳闭环：周期报告注入采纳上下文与采纳率（北极星过程指标）
         agg.adoptions = adoptionContext(p, { start: period.start, end: period.end })
         const done = agg.adoptions.filter((a) => a.adopted).length
@@ -66,14 +78,26 @@ export async function GET(req) {
         return Response.json({ ...rep, range, adoption })
       }
 
-      /* ---------- 最新报告正在后台生成时，立即返回状态，不阻塞 ---------- */
-      if (!date && !range && p.generating) {
-        return Response.json({ generating: true, dates, track: [] })
+      /* ---------- 今天的日报还没到时间：诚实告知（F13）——明天 6:00 生成，先给即时小结 ---------- */
+      if (!date && !range) {
+        const todayCached = p.reports?.[latestContentDay]?.generatedAt
+        if (p.generating || (latestContentDay === todayStr && !todayCached)) {
+          return Response.json({
+            pending: true,
+            todaySummary: p.daySummaries?.[latestContentDay]?.text || '',
+            dates,
+            track: [],
+          })
+        }
       }
 
       /* ---------- 历史日报告：首看生成后缓存，refresh 才重新生成；含当日对话事件流 ---------- */
       if (date) {
         const adoption = (p.adoptions || []).find((a) => a.reportKey === `day:${date}`) || null
+        // 今天的报告：6:00 前不生成（F13 诚实告知），除非 refresh 强制
+        if (!refresh && date === todayStr && !p.reports?.[date]?.generatedAt) {
+          return Response.json({ pending: true, todaySummary: p.daySummaries?.[date]?.text || '', dates, track: [] })
+        }
         if (!refresh && p.reports?.[date] && p.reports[date].generatedAt) {
           return Response.json({ ...p.reports[date], dates, track: parseTrackText(p.reports[date].trackText || ''), adoption })
         }

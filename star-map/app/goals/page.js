@@ -16,7 +16,6 @@ const TYPE_NAME = {
   bonus: '彩蛋完成',
   goal_done: '目标达成',
 }
-const LEVEL_ICON = { 起步: '🌱', 铜星: '🥉', 银星: '🥈', 金星: '🥇' }
 
 /** 与后端一致的达标次数口径：取 metric 最后一个数字，默认 1 */
 function needCount(metric) {
@@ -104,20 +103,6 @@ export default function GoalsPage() {
     return (step.logs || []).find((l) => l.date === today) || null
   }
 
-  function streakOf(step) {
-    const logs = step.logs || []
-    if (!logs.length) return 0
-    const days = [...new Set(logs.map((l) => l.date))].sort()
-    const today = new Date().toISOString().slice(0, 10)
-    if (days.at(-1) !== today) return 0
-    let n = 0
-    for (let k = days.length - 1; k >= 0; k--) {
-      if (days[k] === new Date(Date.now() - n * 86400000).toISOString().slice(0, 10)) n++
-      else break
-    }
-    return n
-  }
-
   return (
     <div className="page">
       <div className="page-head">
@@ -157,7 +142,7 @@ export default function GoalsPage() {
           <p style={{ fontSize: 15, marginBottom: 8 }}>还没有目标。</p>
           <p className="muted" style={{ lineHeight: 1.9 }}>
             在上面输入一个你想改变/达成的事，星图会把它拆成带量化指标的步骤。<br />
-            主观任务写一写、客观任务点完成，每天都有新彩蛋；记录与聊天也会自动同步进度。
+            主观任务写一写、客观任务点完成；记录与聊天也会自动同步进度。
           </p>
         </div>
       )}
@@ -167,19 +152,16 @@ export default function GoalsPage() {
           const doneSteps = g.steps.filter((s) => s.status === 'done').length
           const pct = g.steps.length ? Math.round((doneSteps / g.steps.length) * 100) : 0
           const statusLabel = g.status === 'done' ? '已完成 🎉' : g.status === 'archived' ? '已归档' : '进行中'
-          const level = g.points >= 300 ? '金星' : g.points >= 150 ? '银星' : g.points >= 50 ? '铜星' : '起步'
-          const bonus = g.dailyBonus
-          const bonusToday = bonus && bonus.date === new Date().toISOString().slice(0, 10)
           return (
             <div key={g.id} className="card goal-page-card">
               <div className="goal-head">
                 <div>
                   <div className="goal-title">
                     🎯 {g.title}
-                    <span className="goal-level"> {LEVEL_ICON[level] || '🌱'} {level} · ⭐{g.points}分</span>
+                    <span className="goal-tag" style={{ marginLeft: 6 }}>{g.period === 'weekly' ? '📅 周更' : g.period === 'monthly' ? '🗓️ 月更' : '☀️ 日更'}</span>
                   </div>
                   <div className="muted" style={{ fontSize: 12 }}>
-                    {statusLabel} · {g.createdAt} 建立{g.summary ? ` · ${g.summary}` : ''}
+                    {statusLabel} · {g.createdAt} 建立{g.period !== 'daily' ? ' · 按周期检查，不用每天追' : ''}{g.summary ? ` · ${g.summary}` : ''}
                   </div>
                 </div>
                 {g.status === 'active' && (
@@ -201,28 +183,9 @@ export default function GoalsPage() {
                 <span className="muted" style={{ fontSize: 12 }}>{doneSteps}/{g.steps.length} 步</span>
               </div>
 
-              {g.status === 'active' && bonusToday && (
-                <div className={`bonus-card ${bonus.doneAt ? 'done' : ''}`}>
-                  <div className="bonus-head">
-                    <span>🎁 今日彩蛋任务</span>
-                    <span className="bonus-pts">+{bonus.points} 分</span>
-                  </div>
-                  <div className="bonus-task">{bonus.task}</div>
-                  {bonus.flavor && <div className="muted" style={{ fontSize: 11 }}>{bonus.flavor}</div>}
-                  {bonus.doneAt ? (
-                    <div className="bonus-done">✓ 已领，明天有新彩蛋</div>
-                  ) : (
-                    <button className="btn btn-ghost" onClick={() => act({ action: 'bonusDone', goalId: g.id }, '彩蛋完成 🎁')}>
-                      完成它
-                    </button>
-                  )}
-                </div>
-              )}
-
               <div className="goal-steps">
                 {g.steps.map((s, i) => {
                   const log = todayLog(s)
-                  const streakN = streakOf(s)
                   const doneCount = new Set((s.logs || []).map((l) => l.date)).size
                   const need = needCount(s.metric)
                   const open = form && form.goalId === g.id && form.stepIndex === i
@@ -244,7 +207,7 @@ export default function GoalsPage() {
                           {s.doneAt
                             ? `${s.doneAt} 完成`
                             : doneCount > 0
-                              ? `${s.metric} · 已 ${Math.min(doneCount, need)}/${need}${streakN >= 2 ? ` · 🔥连续 ${streakN} 天` : ''}`
+                              ? `${s.metric} · 已 ${Math.min(doneCount, need)}/${need}`
                               : s.metric}
                         </div>
 
@@ -262,7 +225,7 @@ export default function GoalsPage() {
                                   className="subitem-chip"
                                   onClick={() => setForm({ goalId: g.id, stepIndex: i, subIndex: si, mode: 'journal', text: '' })}
                                 >
-                                  {sub.name} +{sub.points || 5}
+                                  {sub.name}
                                 </button>
                               )
                             })}
@@ -334,7 +297,7 @@ export default function GoalsPage() {
                                     form.mode === 'note'
                                       ? '备注已保存'
                                       : form.subIndex != null
-                                        ? `已记录${(subs[form.subIndex] || {}).name || ''} +${(subs[form.subIndex] || {}).points || 5} ✓`
+                                        ? `已记录${(subs[form.subIndex] || {}).name || ''} ✓`
                                         : subs.length > 0
                                           ? '已记录 ✓'
                                           : isJournal
@@ -381,23 +344,6 @@ export default function GoalsPage() {
                   )
                 })}
               </div>
-
-              {(g.pointsLedger || []).length > 0 && (
-                <div className="goal-tl">
-                  <div className="sec-title">— 积分明细（最近 5 条）—</div>
-                  {[...(g.pointsLedger || [])].reverse().slice(0, 5).map((l, i) => (
-                    <div key={i} className="goal-tl-item">
-                      <span className="goal-tl-icon">⭐</span>
-                      <div>
-                        <span className="goal-tl-head">
-                          {l.date} · {l.note}
-                          <b style={{ marginLeft: 6, color: 'var(--green)' }}>+{l.delta}</b>
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
 
               {(g.progress || []).length > 0 && (
                 <div className="goal-tl">
